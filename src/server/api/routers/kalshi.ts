@@ -49,11 +49,10 @@ export const kalshiRouter = createTRPCRouter({
       const response = await fetch(url.toString());
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message ?? "Failed to fetch event");
+        const errorData = (await response.json()) as { error?: { message?: string } };
+        throw new Error(errorData.error?.message ?? "Failed to fetch event");
       }
 
-      const data = await response.json();
-      return EventResponseSchema.parse(data);
+      return EventResponseSchema.parse(await response.json());
     }),
 });

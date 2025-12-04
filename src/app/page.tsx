@@ -4,7 +4,6 @@ import {
   TrendingUp,
   Zap,
   Shield,
-  UserPlus,
   Link2,
   BarChart3,
   Twitter,

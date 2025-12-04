@@ -25,7 +25,7 @@ export default function LoginPage() {
         type: "sign-in",
       });
       setStep("otp");
-    } catch (err) {
+    } catch {
       setError("Failed to send verification code. Please try again.");
     } finally {
       setIsLoading(false);
@@ -48,7 +48,7 @@ export default function LoginPage() {
       } else {
         router.push("/dashboard");
       }
-    } catch (err) {
+    } catch {
       setError("Invalid code. Please try again.");
     } finally {
       setIsLoading(false);
@@ -65,7 +65,7 @@ export default function LoginPage() {
         type: "sign-in",
       });
       setError("");
-    } catch (err) {
+    } catch {
       setError("Failed to resend code. Please try again.");
     } finally {
       setIsLoading(false);

@@ -48,7 +48,7 @@ export default function DashboardPage() {
 
   const createBet = api.bet.create.useMutation({
     onSuccess: () => {
-      utils.bet.list.invalidate();
+      void utils.bet.list.invalidate();
       setEventTicker("");
       setShowAddForm(false);
     },
@@ -60,7 +60,7 @@ export default function DashboardPage() {
 
   const deleteBet = api.bet.delete.useMutation({
     onSuccess: () => {
-      utils.bet.list.invalidate();
+      void utils.bet.list.invalidate();
       setBetToDelete(null);
     },
   });
@@ -75,9 +75,9 @@ export default function DashboardPage() {
     router.push("/");
   };
 
-  const handleLookup = async () => {
+  const handleLookup = () => {
     if (!eventTicker.trim()) return;
-    fetchEvent();
+    void fetchEvent();
   };
 
   const handleAddBet = () => {
