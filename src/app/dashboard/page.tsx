@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { TrendingUp, LogOut, User, Plus, Trash2, Loader2 } from "lucide-react";
+import { TrendingUp, LogOut, User, Plus, Trash2, Loader2, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { authClient } from "~/server/better-auth/client";
 import { api } from "~/trpc/react";
@@ -13,6 +13,8 @@ export default function DashboardPage() {
   const { data: session, isPending: sessionPending } = authClient.useSession();
   const [eventTicker, setEventTicker] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [betToDelete, setBetToDelete] = useState<{ id: string; title: string } | null>(null);
 
   const utils = api.useUtils();
 
@@ -37,13 +39,23 @@ export default function DashboardPage() {
       setEventTicker("");
       setShowAddForm(false);
     },
+    onError: (error) => {
+      setShowAddForm(false);
+      setErrorMessage(error.message);
+    },
   });
 
   const deleteBet = api.bet.delete.useMutation({
     onSuccess: () => {
       utils.bet.list.invalidate();
+      setBetToDelete(null);
     },
   });
+
+  const handleDeleteBet = () => {
+    if (!betToDelete) return;
+    deleteBet.mutate({ id: betToDelete.id });
+  };
 
   const handleSignOut = async () => {
     await authClient.signOut();
@@ -208,6 +220,85 @@ export default function DashboardPage() {
           )}
         </AnimatePresence>
 
+        {/* Error Modal */}
+        <AnimatePresence>
+          {errorMessage && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+            >
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.8, opacity: 0, y: 20 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                className="mx-4 w-full max-w-md rounded-2xl border border-red-800 bg-gray-900 p-6"
+              >
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-900/50">
+                    <AlertCircle className="h-5 w-5 text-red-400" />
+                  </div>
+                  <h2 className="text-xl font-semibold text-white">Cannot Add Bet</h2>
+                </div>
+                <p className="mb-6 text-gray-400">{errorMessage}</p>
+                <button
+                  onClick={() => setErrorMessage(null)}
+                  className="cursor-pointer w-full rounded-lg bg-gray-700 py-3 font-medium text-white transition-colors hover:bg-gray-600"
+                >
+                  Got it
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Delete Confirmation Modal */}
+        <AnimatePresence>
+          {betToDelete && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+            >
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.8, opacity: 0, y: 20 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                className="mx-4 w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900 p-6"
+              >
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-900/50">
+                    <Trash2 className="h-5 w-5 text-red-400" />
+                  </div>
+                  <h2 className="text-xl font-semibold text-white">Delete Bet</h2>
+                </div>
+                <p className="mb-6 text-gray-400">
+                  Are you sure you want to delete <span className="font-medium text-white">{betToDelete.title}</span>? This action cannot be undone.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setBetToDelete(null)}
+                    className="cursor-pointer flex-1 rounded-lg border border-gray-700 py-3 text-gray-300 transition-colors hover:border-gray-600"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteBet}
+                    disabled={deleteBet.isPending}
+                    className="cursor-pointer flex-1 rounded-lg bg-red-600 py-3 font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {deleteBet.isPending ? "Deleting..." : "Delete"}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Bets List */}
         {betsLoading ? (
           <div className="flex justify-center py-12">
@@ -245,8 +336,7 @@ export default function DashboardPage() {
                   <div className="mt-2 text-xs text-gray-500">{bet.eventTicker}</div>
                 </div>
                 <button
-                  onClick={() => deleteBet.mutate({ id: bet.id })}
-                  disabled={deleteBet.isPending}
+                  onClick={() => setBetToDelete({ id: bet.id, title: bet.title })}
                   className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-red-400"
                 >
                   <Trash2 className="h-5 w-5" />

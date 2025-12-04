@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 
@@ -12,6 +13,21 @@ export const betRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Check if user already has this bet
+      const existingBet = await ctx.db.bet.findFirst({
+        where: {
+          eventTicker: input.eventTicker,
+          userId: ctx.session.user.id,
+        },
+      });
+
+      if (existingBet) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "You are already tracking this event.",
+        });
+      }
+
       return ctx.db.bet.create({
         data: {
           eventTicker: input.eventTicker,
