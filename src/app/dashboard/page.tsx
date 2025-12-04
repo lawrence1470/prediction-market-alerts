@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { TrendingUp, LogOut, User, Plus, Trash2, Loader2, AlertCircle } from "lucide-react";
+import { TrendingUp, LogOut, User, Plus, Trash2, Loader2, AlertCircle, Newspaper, Radio, ExternalLink, Clock, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { authClient } from "~/server/better-auth/client";
 import { api } from "~/trpc/react";
@@ -15,6 +15,19 @@ export default function DashboardPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [betToDelete, setBetToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+
+  const toggleCardExpanded = (betId: string) => {
+    setExpandedCards((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(betId)) {
+        newSet.delete(betId);
+      } else {
+        newSet.add(betId);
+      }
+      return newSet;
+    });
+  };
 
   const utils = api.useUtils();
 
@@ -323,25 +336,148 @@ export default function DashboardPage() {
               )}
             </AnimatePresence>
             {bets.map((bet) => (
-              <div
+              <motion.div
                 key={bet.id}
-                className="flex items-center justify-between rounded-xl border border-gray-800 bg-gray-900 p-6"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-xl border border-gray-800 bg-gray-900 overflow-hidden"
               >
-                <div>
-                  <div className="mb-1 text-xs text-[#CDFF00]">{bet.category}</div>
-                  <div className="text-lg font-medium text-white">{bet.title}</div>
-                  {bet.subtitle && (
-                    <div className="text-sm text-gray-400">{bet.subtitle}</div>
-                  )}
-                  <div className="mt-2 text-xs text-gray-500">{bet.eventTicker}</div>
+                {/* Card Header */}
+                <div className="flex items-center justify-between p-6 pb-4">
+                  <div className="flex-1">
+                    <div className="mb-1 text-xs text-[#CDFF00]">{bet.category}</div>
+                    <div className="text-lg font-medium text-white">{bet.title}</div>
+                    {bet.subtitle && (
+                      <div className="text-sm text-gray-400">{bet.subtitle}</div>
+                    )}
+                    <div className="mt-2 text-xs text-gray-500">{bet.eventTicker}</div>
+                  </div>
+                  <button
+                    onClick={() => setBetToDelete({ id: bet.id, title: bet.title })}
+                    className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-red-400"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => setBetToDelete({ id: bet.id, title: bet.title })}
-                  className="cursor-pointer rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-red-400"
-                >
-                  <Trash2 className="h-5 w-5" />
-                </button>
-              </div>
+
+                {/* News Scanning Section */}
+                <div className="border-t border-gray-800 bg-gray-950/50">
+                  {/* Clickable Header */}
+                  <button
+                    onClick={() => toggleCardExpanded(bet.id)}
+                    className="cursor-pointer w-full flex items-center gap-2 px-6 py-4 transition-colors hover:bg-gray-900/30"
+                  >
+                    {/* Pulsing Scanning Icon */}
+                    <div className="relative flex items-center justify-center">
+                      <Radio className="h-4 w-4 text-[#CDFF00]" />
+                      <span className="absolute inline-flex h-full w-full rounded-full bg-[#CDFF00] opacity-30 animate-[pulse_1.5s_ease-in-out_infinite]" />
+                      <span className="absolute inline-flex h-[150%] w-[150%] rounded-full bg-[#CDFF00] opacity-15 animate-[pulse_1.5s_ease-in-out_infinite_0.3s]" />
+                    </div>
+                    <span className="text-xs text-gray-400">Scanning for news...</span>
+
+                    {/* Alert Count Badge (visible when collapsed) */}
+                    {!expandedCards.has(bet.id) && (
+                      <span className="flex items-center gap-1 rounded-full bg-[#CDFF00]/10 px-2 py-0.5 text-xs font-medium text-[#CDFF00]">
+                        3 alerts
+                      </span>
+                    )}
+
+                    <div className="ml-auto flex items-center gap-3">
+                      <div className="flex items-center gap-1.5">
+                        <div className="h-1.5 w-1.5 rounded-full bg-[#CDFF00] animate-[pulse_2s_ease-in-out_infinite]" />
+                        <span className="text-xs text-gray-500">Live</span>
+                      </div>
+                      <motion.div
+                        animate={{ rotate: expandedCards.has(bet.id) ? 180 : 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <ChevronDown className="h-4 w-4 text-gray-500" />
+                      </motion.div>
+                    </div>
+                  </button>
+
+                  {/* Collapsible News Articles */}
+                  <AnimatePresence initial={false}>
+                    {expandedCards.has(bet.id) && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                        className="overflow-hidden"
+                      >
+                        <div className="space-y-2 px-6 pb-4">
+                          {/* Sample Article 1 */}
+                          <a
+                            href="#"
+                            className="group flex items-start gap-3 rounded-lg bg-gray-900/50 p-3 border border-gray-800/50 transition-all hover:border-gray-700 hover:bg-gray-900"
+                          >
+                            <Newspaper className="h-4 w-4 text-[#CDFF00] mt-0.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-white group-hover:text-[#CDFF00] transition-colors line-clamp-2">
+                                Breaking: Major developments reported as analysts weigh in on market implications
+                              </p>
+                              <div className="flex items-center gap-2 mt-1.5">
+                                <span className="text-xs text-gray-500">Reuters</span>
+                                <span className="text-gray-600">•</span>
+                                <div className="flex items-center gap-1 text-xs text-gray-500">
+                                  <Clock className="h-3 w-3" />
+                                  <span>2 min ago</span>
+                                </div>
+                              </div>
+                            </div>
+                            <ExternalLink className="h-4 w-4 text-gray-600 group-hover:text-gray-400 shrink-0 mt-0.5" />
+                          </a>
+
+                          {/* Sample Article 2 */}
+                          <a
+                            href="#"
+                            className="group flex items-start gap-3 rounded-lg bg-gray-900/50 p-3 border border-gray-800/50 transition-all hover:border-gray-700 hover:bg-gray-900"
+                          >
+                            <Newspaper className="h-4 w-4 text-[#CDFF00] mt-0.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-white group-hover:text-[#CDFF00] transition-colors line-clamp-2">
+                                Expert analysis: What the latest trends mean for prediction markets
+                              </p>
+                              <div className="flex items-center gap-2 mt-1.5">
+                                <span className="text-xs text-gray-500">Bloomberg</span>
+                                <span className="text-gray-600">•</span>
+                                <div className="flex items-center gap-1 text-xs text-gray-500">
+                                  <Clock className="h-3 w-3" />
+                                  <span>15 min ago</span>
+                                </div>
+                              </div>
+                            </div>
+                            <ExternalLink className="h-4 w-4 text-gray-600 group-hover:text-gray-400 shrink-0 mt-0.5" />
+                          </a>
+
+                          {/* Sample Article 3 */}
+                          <a
+                            href="#"
+                            className="group flex items-start gap-3 rounded-lg bg-gray-900/50 p-3 border border-gray-800/50 transition-all hover:border-gray-700 hover:bg-gray-900"
+                          >
+                            <Newspaper className="h-4 w-4 text-[#CDFF00] mt-0.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-white group-hover:text-[#CDFF00] transition-colors line-clamp-2">
+                                Market update: Key indicators suggest shifting sentiment among traders
+                              </p>
+                              <div className="flex items-center gap-2 mt-1.5">
+                                <span className="text-xs text-gray-500">AP News</span>
+                                <span className="text-gray-600">•</span>
+                                <div className="flex items-center gap-1 text-xs text-gray-500">
+                                  <Clock className="h-3 w-3" />
+                                  <span>1 hour ago</span>
+                                </div>
+                              </div>
+                            </div>
+                            <ExternalLink className="h-4 w-4 text-gray-600 group-hover:text-gray-400 shrink-0 mt-0.5" />
+                          </a>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
             ))}
           </div>
         ) : (
