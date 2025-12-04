@@ -1,3 +1,5 @@
+import { betRouter } from "~/server/api/routers/bet";
+import { kalshiRouter } from "~/server/api/routers/kalshi";
 import { postRouter } from "~/server/api/routers/post";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
@@ -8,6 +10,8 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
  */
 export const appRouter = createTRPCRouter({
   post: postRouter,
+  kalshi: kalshiRouter,
+  bet: betRouter,
 });
 
 // export type definition of API

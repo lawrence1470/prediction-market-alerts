@@ -38,6 +38,7 @@ model User {
   sessions      Session[]
   accounts      Account[]
   posts         Post[]
+  bets          Bet[]
 
   @@unique([email])
   @@map("user")
@@ -86,4 +87,21 @@ model Verification {
   updatedAt  DateTime @default(now()) @updatedAt
 
   @@map("verification")
+}
+
+model Bet {
+  id          String   @id @default(cuid())
+  eventTicker String
+  title       String
+  subtitle    String?
+  category    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([eventTicker])
+  @@map("bet")
 }
