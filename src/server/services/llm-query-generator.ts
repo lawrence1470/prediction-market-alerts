@@ -10,7 +10,7 @@
 
 import OpenAI from "openai";
 import { env } from "~/env";
-import { QUERY_EXCLUSIONS } from "~/server/constants/entity-mappings";
+import { QUERY_EXCLUSIONS, CATEGORY_EXCLUSIONS } from "~/server/constants/entity-mappings";
 import {
   generateQuery as generateFallbackQuery,
   buildTopicUrl,
@@ -140,8 +140,8 @@ export async function generateQueryWithLLM(
       throw new Error("Invalid response format from OpenAI");
     }
 
-    // Build the final query
-    const query = buildQueryFromTerms(parsed.searchTerms);
+    // Build the final query with category-specific exclusions
+    const query = buildQueryFromTerms(parsed.searchTerms, parsed.category);
     const confidence = typeof parsed.confidence === "number" ? parsed.confidence : 0.7;
 
     console.log("[LLM Query] Generated query:", {
@@ -207,9 +207,16 @@ function buildUserPrompt(eventTicker: string, eventTitle?: string): string {
 }
 
 /**
+ * Get category-specific exclusions or fall back to base exclusions
+ */
+function getExclusionsForCategory(category: string): string[] {
+  return CATEGORY_EXCLUSIONS[category] ?? QUERY_EXCLUSIONS;
+}
+
+/**
  * Build the final Superfeedr query from search terms
  */
-function buildQueryFromTerms(searchTerms: string[]): string {
+function buildQueryFromTerms(searchTerms: string[], category: string = "other"): string {
   // Quote each term for exact matching
   const quotedTerms = searchTerms.map((term) => `"${term}"`);
 
@@ -219,8 +226,8 @@ function buildQueryFromTerms(searchTerms: string[]): string {
       ? `(${quotedTerms.join(" | ")})`
       : quotedTerms[0] ?? "";
 
-  // Add exclusions
-  const exclusions = QUERY_EXCLUSIONS.join(" ");
+  // Add category-specific exclusions
+  const exclusions = getExclusionsForCategory(category).join(" ");
 
   // Add popularity filter
   return `${searchPart} ${exclusions} popularity:medium`.trim();

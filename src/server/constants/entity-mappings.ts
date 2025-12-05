@@ -71,7 +71,7 @@ export const ECONOMIC_EVENTS: Record<string, { name: string; searchTerms: string
   };
 
 // Query Exclusion Patterns
-// These terms are excluded from all queries to reduce noise
+// Base exclusions applied to all queries
 export const QUERY_EXCLUSIONS = [
   "-fantasy",
   "-mock",
@@ -81,6 +81,59 @@ export const QUERY_EXCLUSIONS = [
   "-reddit",
   "-rumor",
 ];
+
+// Category-specific exclusions for more targeted filtering
+export const CATEGORY_EXCLUSIONS: Record<string, string[]> = {
+  sports: [
+    "-fantasy",
+    "-mock",
+    "-draft",
+    '-"all time"',
+    "-history",
+    "-reddit",
+    "-rumor",
+    "-highlights",
+    "-throwback",
+    "-retro",
+    "-vintage",
+    "-classic",
+  ],
+  crypto: [
+    "-airdrop",
+    "-giveaway",
+    "-scam",
+    '-"how to buy"',
+    "-tutorial",
+    "-beginner",
+    "-reddit",
+    "-rumor",
+    "-meme",
+    "-spam",
+  ],
+  economic: [
+    '-"for dummies"',
+    "-tutorial",
+    "-textbook",
+    "-history",
+    "-reddit",
+    "-coursera",
+    "-khan academy",
+    "-investopedia",
+  ],
+  politics: [
+    "-reddit",
+    "-rumor",
+    "-opinion",
+    "-editorial",
+    "-history",
+    "-throwback",
+  ],
+  other: [
+    "-reddit",
+    "-rumor",
+    "-history",
+  ],
+};
 
 // NBA Team Codes → Full Names and Search Terms
 export const NBA_TEAMS: Record<string, { name: string; searchTerms: string[] }> =
