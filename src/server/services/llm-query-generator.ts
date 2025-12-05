@@ -34,24 +34,56 @@ export interface LLMQueryResult {
   searchTerms: string[];
   category: string;
   usedLLM: boolean;
+  confidence: number;
 }
 
-const SYSTEM_PROMPT = `You are a search query generator for a news tracking system. Given information about a prediction market event, generate optimal search terms to find relevant breaking news.
+const SYSTEM_PROMPT = `You are a search query generator for a real-time news tracking system for prediction market bettors. Your goal is to generate search terms that will catch BREAKING NEWS relevant to betting outcomes.
 
 Output ONLY valid JSON with this exact structure:
 {
   "searchTerms": ["term1", "term2"],
-  "category": "sports|crypto|economic|politics|other"
+  "category": "sports|crypto|economic|politics|other",
+  "confidence": 0.0-1.0
 }
 
-Rules:
-1. Extract key entities (teams, people, assets, events)
-2. Use full names for precision (e.g., "Dallas Cowboys" not just "Cowboys")
-3. Include 2-4 search terms maximum
-4. For sports: include both team full names
-5. For crypto: include the asset name and symbol
-6. For economic events: include the event name and related terms
-7. Keep terms specific enough to avoid noise but general enough to catch relevant news`;
+## RULES
+
+1. **Use FULL official names** - "Los Angeles Lakers" not "Lakers" (avoids ambiguity with other "Lakers")
+2. **Include 2-4 search terms maximum** - more terms = more noise
+3. **Focus on entities that move betting lines**:
+   - Sports: team names, star players with injury concerns
+   - Crypto: asset name + symbol (e.g., "Bitcoin", "BTC")
+   - Economic: event name + agency (e.g., "Federal Reserve", "FOMC")
+4. **Prioritize recent/breaking news terms** over historical
+5. **Set confidence** based on how well you understood the event (0.5 = unsure, 0.9 = very confident)
+
+## EXAMPLES
+
+### Sports Game (NFL)
+Input: Event Ticker: KXNFLGAME-25DEC07DALDET, Context: NFL football game
+Output: {"searchTerms": ["Dallas Cowboys", "Detroit Lions"], "category": "sports", "confidence": 0.95}
+
+### Sports Game (NBA)
+Input: Event Ticker: KXNBAGAME-25DEC05LALBOS, Context: NBA basketball game
+Output: {"searchTerms": ["Los Angeles Lakers", "Boston Celtics"], "category": "sports", "confidence": 0.95}
+
+### Crypto Price
+Input: Event Ticker: KXBTC-25DEC05, Context: Bitcoin price
+Output: {"searchTerms": ["Bitcoin", "BTC price"], "category": "crypto", "confidence": 0.90}
+
+### Economic Event
+Input: Event Ticker: KXFED-25JAN, Context: Federal Reserve policy
+Output: {"searchTerms": ["Federal Reserve", "interest rate decision", "FOMC"], "category": "economic", "confidence": 0.85}
+
+### Unknown Event (low confidence)
+Input: Event Ticker: KXCABOUT-29
+Output: {"searchTerms": ["KXCABOUT-29"], "category": "other", "confidence": 0.30}
+
+## AVOID
+- Generic terms like "game", "match", "news", "update"
+- Nicknames without city (use "Dallas Cowboys" not "Cowboys")
+- Too many terms (max 4)
+- Historical/archive-related terms`;
 
 /**
  * Generate a search query using GPT-4o-mini
@@ -75,6 +107,7 @@ export async function generateQueryWithLLM(
       searchTerms: extractSearchTermsFromQuery(fallbackQuery),
       category: detectCategory(eventTicker),
       usedLLM: false,
+      confidence: 0.5, // Rule-based has moderate confidence
     };
   }
 
@@ -100,6 +133,7 @@ export async function generateQueryWithLLM(
     const parsed = JSON.parse(content) as {
       searchTerms: string[];
       category: string;
+      confidence?: number;
     };
 
     if (!parsed.searchTerms || !Array.isArray(parsed.searchTerms)) {
@@ -108,12 +142,14 @@ export async function generateQueryWithLLM(
 
     // Build the final query
     const query = buildQueryFromTerms(parsed.searchTerms);
+    const confidence = typeof parsed.confidence === "number" ? parsed.confidence : 0.7;
 
     console.log("[LLM Query] Generated query:", {
       eventTicker,
       eventTitle,
       searchTerms: parsed.searchTerms,
       category: parsed.category,
+      confidence,
     });
 
     return {
@@ -121,6 +157,7 @@ export async function generateQueryWithLLM(
       searchTerms: parsed.searchTerms,
       category: parsed.category,
       usedLLM: true,
+      confidence,
     };
   } catch (error) {
     console.error("[LLM Query] Error generating query:", error);
@@ -132,6 +169,7 @@ export async function generateQueryWithLLM(
       searchTerms: extractSearchTermsFromQuery(fallbackQuery),
       category: detectCategory(eventTicker),
       usedLLM: false,
+      confidence: 0.5, // Rule-based fallback has moderate confidence
     };
   }
 }
