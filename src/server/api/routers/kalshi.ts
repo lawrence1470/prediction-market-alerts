@@ -11,7 +11,7 @@ const eventsApi = new EventsApi(configuration);
 
 export const kalshiRouter = createTRPCRouter({
   getEvent: publicProcedure
-    .input(z.object({ eventTicker: z.string() }))
+    .input(z.object({ eventTicker: z.string().min(1) }))
     .query(async ({ input }) => {
       const response = await eventsApi.getEvent(input.eventTicker, true);
       return response.data;

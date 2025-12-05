@@ -11,6 +11,7 @@ import {
   Linkedin,
   ArrowRight,
 } from "lucide-react";
+import { getSession } from "~/server/better-auth/server";
 
 const stats = [
   { value: "50K+", unit: "", label: "Active traders using alerts", color: "bg-purple-100 text-purple-900", badge: "USERS" },
@@ -75,7 +76,10 @@ const steps = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const session = await getSession();
+  const isLoggedIn = !!session?.user;
+
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
@@ -87,15 +91,26 @@ export default function Home() {
               <span className="text-xl font-semibold text-white">Kalshi Tracker</span>
             </div>
             <div className="flex items-center gap-8">
-              <Link href="/login" className="text-gray-400 transition-colors hover:text-white">
-                Sign in
-              </Link>
-              <Link
-                href="/signup"
-                className="rounded-full bg-[#CDFF00] px-6 py-2.5 font-medium text-black transition-colors hover:bg-[#b8e600]"
-              >
-                Get Started
-              </Link>
+              {isLoggedIn ? (
+                <Link
+                  href="/dashboard"
+                  className="rounded-full bg-[#CDFF00] px-6 py-2.5 font-medium text-black transition-colors hover:bg-[#b8e600]"
+                >
+                  Dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link href="/login" className="text-gray-400 transition-colors hover:text-white">
+                    Sign in
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="rounded-full bg-[#CDFF00] px-6 py-2.5 font-medium text-black transition-colors hover:bg-[#b8e600]"
+                  >
+                    Get Started
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

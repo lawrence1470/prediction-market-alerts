@@ -12,7 +12,25 @@ export const env = createEnv({
         ? z.string()
         : z.string().optional(),
     DATABASE_URL: z.string().url(),
-    RESEND_API_KEY: z.string(),
+    RESEND_API_KEY:
+      process.env.NODE_ENV === "production"
+        ? z.string()
+        : z.string().optional(),
+    EMAIL_FROM: z.string().email().default("alerts@kalshitracker.com"),
+    SUPERFEEDR_LOGIN:
+      process.env.NODE_ENV === "production"
+        ? z.string()
+        : z.string().optional(),
+    SUPERFEEDR_TOKEN:
+      process.env.NODE_ENV === "production"
+        ? z.string()
+        : z.string().optional(),
+    SUPERFEEDR_TIMEOUT_MS: z.coerce.number().default(10000),
+    RESEND_TIMEOUT_MS: z.coerce.number().default(5000),
+    OPENAI_API_KEY:
+      process.env.NODE_ENV === "production"
+        ? z.string()
+        : z.string().optional(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -35,6 +53,12 @@ export const env = createEnv({
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
     DATABASE_URL: process.env.DATABASE_URL,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
+    EMAIL_FROM: process.env.EMAIL_FROM,
+    SUPERFEEDR_LOGIN: process.env.SUPERFEEDR_LOGIN,
+    SUPERFEEDR_TOKEN: process.env.SUPERFEEDR_TOKEN,
+    SUPERFEEDR_TIMEOUT_MS: process.env.SUPERFEEDR_TIMEOUT_MS,
+    RESEND_TIMEOUT_MS: process.env.RESEND_TIMEOUT_MS,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     NODE_ENV: process.env.NODE_ENV,
   },
   /**

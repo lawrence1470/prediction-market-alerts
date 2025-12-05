@@ -28,17 +28,18 @@ model Post {
 }
 
 model User {
-  id            String    @id
+  id            String      @id
   name          String //@db.Text
   email         String
-  emailVerified Boolean   @default(false)
+  emailVerified Boolean     @default(false)
   image         String? //@db.Text
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @default(now()) @updatedAt
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @default(now()) @updatedAt
   sessions      Session[]
   accounts      Account[]
   posts         Post[]
   bets          Bet[]
+  userAlerts    UserAlert[]
 
   @@unique([email])
   @@map("user")
@@ -104,4 +105,56 @@ model Bet {
   @@index([userId])
   @@index([eventTicker])
   @@map("bet")
+}
+
+// ==========================================
+// Superfeedr Webhook Models
+// ==========================================
+
+enum EventWebhookStatus {
+  ACTIVE
+  PENDING
+  FAILED
+  UNSUBSCRIBED
+  EXPIRED
+}
+
+enum UserAlertStatus {
+  ACTIVE
+  PAUSED
+  EXPIRED
+}
+
+model EventWebhook {
+  id              String             @id @default(cuid())
+  eventTicker     String             @unique
+  superfeedrTopic String             @unique
+  superfeedrSecret String
+  searchQuery     String
+  status          EventWebhookStatus @default(PENDING)
+  subscriberCount Int                @default(0)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  userAlerts UserAlert[]
+
+  @@map("event_webhook")
+}
+
+model UserAlert {
+  id           String          @id @default(cuid())
+  userId       String
+  eventTicker  String
+  marketTicker String
+  status       UserAlertStatus @default(ACTIVE)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventWebhook EventWebhook @relation(fields: [eventTicker], references: [eventTicker])
+
+  @@unique([userId, marketTicker])
+  @@index([userId])
+  @@index([eventTicker])
+  @@map("user_alert")
 }

@@ -36,14 +36,15 @@ export default function DashboardPage() {
     return alerts?.find((alert) => alert.eventTicker === eventTicker);
   };
 
+  const trimmedTicker = eventTicker.trim();
   const {
     data: eventPreview,
     isLoading: eventLoading,
     error: eventError,
     refetch: fetchEvent,
   } = api.kalshi.getEvent.useQuery(
-    { eventTicker },
-    { enabled: false }
+    { eventTicker: trimmedTicker },
+    { enabled: false, retry: false }
   );
 
   const createBet = api.bet.create.useMutation({
@@ -111,7 +112,7 @@ export default function DashboardPage() {
   };
 
   const handleLookup = () => {
-    if (!eventTicker.trim()) return;
+    if (!trimmedTicker) return;
     void fetchEvent();
   };
 
@@ -221,7 +222,7 @@ export default function DashboardPage() {
                   />
                   <button
                     onClick={handleLookup}
-                    disabled={!eventTicker.trim() || eventLoading}
+                    disabled={!trimmedTicker || eventLoading}
                     className="cursor-pointer rounded-lg bg-gray-700 px-4 py-3 text-white transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {eventLoading ? (
