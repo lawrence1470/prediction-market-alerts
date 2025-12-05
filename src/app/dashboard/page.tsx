@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { TrendingUp, LogOut, User, Plus, Trash2, Loader2, AlertCircle, Radio, Bell, RefreshCw } from "lucide-react";
+import { TrendingUp, LogOut, User, Plus, Trash2, Loader2, AlertCircle, Radio, Bell } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { authClient } from "~/server/better-auth/client";
 import { api } from "~/trpc/react";

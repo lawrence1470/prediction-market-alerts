@@ -23,11 +23,9 @@ function getOpenAIClient(): OpenAI | null {
   if (!env.OPENAI_API_KEY) {
     return null;
   }
-  if (!openaiClient) {
-    openaiClient = new OpenAI({
-      apiKey: env.OPENAI_API_KEY,
-    });
-  }
+  openaiClient ??= new OpenAI({
+    apiKey: env.OPENAI_API_KEY,
+  });
   return openaiClient;
 }
 
