@@ -10,6 +10,7 @@
 import { NextResponse } from "next/server";
 import { db } from "~/server/db";
 import { sendNewsAlert, type ArticleData } from "~/server/services/email";
+import { formatEventTitle } from "~/server/utils/event-title";
 
 export async function POST(request: Request) {
   // Only allow in development or with explicit test mode
@@ -131,44 +132,10 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("[Webhook Test] Error:", error);
     return NextResponse.json(
-      { error: "Internal server error", details: String(error) },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
-}
-
-function formatEventTitle(eventTicker: string): string {
-  const parts = eventTicker.split("-");
-  const series = parts[0] ?? "";
-
-  if (series.includes("NFL")) {
-    const eventPart = parts[1] ?? "";
-    const teamsPart = eventPart.slice(7);
-    if (teamsPart.length >= 6) {
-      const team1 = teamsPart.slice(0, 3);
-      const team2 = teamsPart.slice(3, 6);
-      return `NFL: ${team1} vs ${team2}`;
-    }
-    return `NFL Event`;
-  }
-
-  if (series.includes("NBA")) {
-    const eventPart = parts[1] ?? "";
-    const teamsPart = eventPart.slice(7);
-    if (teamsPart.length >= 6) {
-      const team1 = teamsPart.slice(0, 3);
-      const team2 = teamsPart.slice(3, 6);
-      return `NBA: ${team1} vs ${team2}`;
-    }
-    return `NBA Event`;
-  }
-
-  if (series.includes("BTC")) return "Bitcoin Price";
-  if (series.includes("ETH")) return "Ethereum Price";
-  if (series.includes("FED")) return "Federal Reserve";
-  if (series.includes("CPI")) return "CPI / Inflation";
-
-  return eventTicker;
 }
 
 // GET endpoint for quick health check

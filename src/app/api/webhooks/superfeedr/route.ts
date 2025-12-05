@@ -15,6 +15,7 @@ import { NextResponse } from "next/server";
 import { db } from "~/server/db";
 import { verifySignature } from "~/server/services/superfeedr";
 import { sendNewsAlert, type ArticleData } from "~/server/services/email";
+import { formatEventTitle } from "~/server/utils/event-title";
 
 interface SuperfeedrItem {
   id: string;
@@ -157,42 +158,6 @@ export async function POST(request: Request) {
       error: "Internal error - logged for investigation",
     });
   }
-}
-
-/**
- * Format an event ticker into a human-readable title
- *
- * @example "KXNFLSPREAD-25DEC04DALDET" -> "NFL: DAL vs DET"
- */
-function formatEventTitle(eventTicker: string): string {
-  const parts = eventTicker.split("-");
-  const series = parts[0] ?? "";
-
-  // NFL format
-  if (series.includes("NFL")) {
-    const eventPart = parts[1] ?? "";
-    // Extract team codes from event part (after 7-char date prefix)
-    const teamsPart = eventPart.slice(7);
-    if (teamsPart.length >= 6) {
-      const team1 = teamsPart.slice(0, 3);
-      const team2 = teamsPart.slice(3, 6);
-      return `NFL: ${team1} vs ${team2}`;
-    }
-    return `NFL Event`;
-  }
-
-  // Crypto format
-  if (series.includes("BTC")) return "Bitcoin Price";
-  if (series.includes("ETH")) return "Ethereum Price";
-  if (series.includes("SOL")) return "Solana Price";
-
-  // Economic format
-  if (series.includes("FED")) return "Federal Reserve";
-  if (series.includes("CPI")) return "CPI / Inflation";
-  if (series.includes("GDP")) return "GDP Report";
-
-  // Fallback
-  return eventTicker;
 }
 
 // Handle GET requests for Superfeedr hub verification
