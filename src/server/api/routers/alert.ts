@@ -21,12 +21,11 @@ import { getTopicUrlForEventWithLLM } from "~/server/services/llm-query-generato
 
 // Build the webhook callback URL
 const getWebhookCallbackUrl = () => {
-  // In development, you'd use ngrok or similar
-  // In production, this would be your deployed domain
+  // Priority: NEXT_PUBLIC_APP_URL (explicit) > VERCEL_URL (auto) > localhost
+  // This ensures we use a stable production URL, not preview deployment URLs
   const baseUrl =
-    process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:4000";
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:4000");
   return `${baseUrl}/api/webhooks/superfeedr`;
 };
 
