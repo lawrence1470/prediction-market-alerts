@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { TrendingUp, LogOut, User, Plus, Trash2, Loader2, AlertCircle, Newspaper, Radio, ExternalLink, Clock, ChevronDown } from "lucide-react";
+import { TrendingUp, LogOut, User, Plus, Trash2, Loader2, AlertCircle, Radio, Bell, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { authClient } from "~/server/better-auth/client";
 import { api } from "~/trpc/react";
@@ -15,26 +15,26 @@ export default function DashboardPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [betToDelete, setBetToDelete] = useState<{ id: string; title: string } | null>(null);
-  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
-
-  const toggleCardExpanded = (betId: string) => {
-    setExpandedCards((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(betId)) {
-        newSet.delete(betId);
-      } else {
-        newSet.add(betId);
-      }
-      return newSet;
-    });
-  };
+  const [pendingAlertTicker, setPendingAlertTicker] = useState<string | null>(null);
+  const [pendingToggleAlertId, setPendingToggleAlertId] = useState<string | null>(null);
+  const [mutationError, setMutationError] = useState<{ title: string; message: string } | null>(null);
 
   const utils = api.useUtils();
 
-  const { data: bets, isLoading: betsLoading } = api.bet.list.useQuery(
+  const { data: bets, isLoading: betsLoading, error: betsError, refetch: refetchBets } = api.bet.list.useQuery(
     undefined,
     { enabled: !!session }
   );
+
+  const { data: alerts, error: alertsError, refetch: refetchAlerts } = api.alert.getAlerts.useQuery(
+    undefined,
+    { enabled: !!session }
+  );
+
+  // Helper to find alert for a specific event ticker
+  const getAlertForBet = (eventTicker: string) => {
+    return alerts?.find((alert) => alert.eventTicker === eventTicker);
+  };
 
   const {
     data: eventPreview,
@@ -62,6 +62,41 @@ export default function DashboardPage() {
     onSuccess: () => {
       void utils.bet.list.invalidate();
       setBetToDelete(null);
+    },
+    onError: (error) => {
+      setBetToDelete(null);
+      setMutationError({
+        title: "Failed to Delete Bet",
+        message: error.message || "Could not delete bet. Please try again."
+      });
+    },
+  });
+
+  const addAlert = api.alert.addAlert.useMutation({
+    onSuccess: () => {
+      void utils.alert.getAlerts.invalidate();
+      setPendingAlertTicker(null);
+    },
+    onError: (error) => {
+      setPendingAlertTicker(null);
+      setMutationError({
+        title: "Failed to Enable Alerts",
+        message: error.message || "Could not enable news alerts. Please try again."
+      });
+    },
+  });
+
+  const toggleAlert = api.alert.toggleAlert.useMutation({
+    onSuccess: () => {
+      void utils.alert.getAlerts.invalidate();
+      setPendingToggleAlertId(null);
+    },
+    onError: (error) => {
+      setPendingToggleAlertId(null);
+      setMutationError({
+        title: "Failed to Update Alert",
+        message: error.message || "Could not update alert status. Please try again."
+      });
     },
   });
 
@@ -114,6 +149,13 @@ export default function DashboardPage() {
               <span className="text-xl font-semibold text-white">Kalshi Tracker</span>
             </Link>
             <div className="flex items-center gap-4">
+              <Link
+                href="/dashboard/alerts"
+                className="flex items-center gap-2 rounded-full border border-gray-700 px-4 py-2 text-gray-300 transition-colors hover:border-[#CDFF00] hover:text-[#CDFF00]"
+              >
+                <Bell className="h-4 w-4" />
+                Alerts
+              </Link>
               <div className="flex items-center gap-2 rounded-full bg-gray-800 px-4 py-2">
                 <User className="h-4 w-4 text-gray-400" />
                 <span className="text-sm text-gray-300">{session.user.email}</span>
@@ -192,8 +234,20 @@ export default function DashboardPage() {
               </div>
 
               {eventError && (
-                <div className="mb-4 rounded-lg bg-red-900/30 p-3 text-sm text-red-400">
-                  Event not found. Check the ID and try again.
+                <div className="mb-4 rounded-lg border border-red-800/50 bg-red-900/30 p-3">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-400" />
+                    <div className="flex-1">
+                      <p className="text-sm text-red-400">Event not found. Check the ID and try again.</p>
+                      <button
+                        onClick={handleLookup}
+                        disabled={eventLoading}
+                        className="mt-2 text-xs text-red-300 underline hover:text-red-200 disabled:opacity-50"
+                      >
+                        Retry lookup
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -233,7 +287,7 @@ export default function DashboardPage() {
           )}
         </AnimatePresence>
 
-        {/* Error Modal */}
+        {/* Create Bet Error Modal */}
         <AnimatePresence>
           {errorMessage && (
             <motion.div
@@ -263,6 +317,38 @@ export default function DashboardPage() {
                   Got it
                 </button>
               </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Mutation Error Toast */}
+        <AnimatePresence>
+          {mutationError && (
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              className="fixed bottom-8 right-8 z-50 max-w-md"
+            >
+              <div className="rounded-xl border border-red-800 bg-gray-900 p-4 shadow-2xl">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-900/50">
+                    <AlertCircle className="h-4 w-4 text-red-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-white">{mutationError.title}</h3>
+                    <p className="mt-1 text-sm text-gray-400">{mutationError.message}</p>
+                  </div>
+                  <button
+                    onClick={() => setMutationError(null)}
+                    className="cursor-pointer text-gray-400 hover:text-gray-300"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -317,6 +403,25 @@ export default function DashboardPage() {
           <div className="flex justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-[#CDFF00]" />
           </div>
+        ) : betsError ? (
+          <div className="rounded-xl border border-red-800/50 bg-gray-900 p-8 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-900/30">
+              <AlertCircle className="h-8 w-8 text-red-400" />
+            </div>
+            <h2 className="mb-2 text-xl font-semibold text-white">Failed to Load Bets</h2>
+            <p className="mb-6 text-gray-400">
+              {betsError.message || "Something went wrong while loading your bets."}
+            </p>
+            <button
+              onClick={() => void refetchBets()}
+              className="cursor-pointer inline-flex items-center gap-2 rounded-lg bg-gray-700 px-6 py-3 font-medium text-white transition-colors hover:bg-gray-600"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Try Again
+            </button>
+          </div>
         ) : bets && bets.length > 0 ? (
           <div className="relative grid gap-4">
             {/* Loading overlay when adding a bet */}
@@ -360,123 +465,105 @@ export default function DashboardPage() {
                   </button>
                 </div>
 
-                {/* News Scanning Section */}
-                <div className="border-t border-gray-800 bg-gray-950/50">
-                  {/* Clickable Header */}
-                  <button
-                    onClick={() => toggleCardExpanded(bet.id)}
-                    className="cursor-pointer w-full flex items-center gap-2 px-6 py-4 transition-colors hover:bg-gray-900/30"
-                  >
-                    {/* Pulsing Scanning Icon */}
-                    <div className="relative flex items-center justify-center">
-                      <Radio className="h-4 w-4 text-[#CDFF00]" />
-                      <span className="absolute inline-flex h-full w-full rounded-full bg-[#CDFF00] opacity-30 animate-[pulse_1.5s_ease-in-out_infinite]" />
-                      <span className="absolute inline-flex h-[150%] w-[150%] rounded-full bg-[#CDFF00] opacity-15 animate-[pulse_1.5s_ease-in-out_infinite_0.3s]" />
-                    </div>
-                    <span className="text-xs text-gray-400">Scanning for news...</span>
+                {/* News Alerts Section */}
+                {(() => {
+                  const alert = getAlertForBet(bet.eventTicker);
+                  const isAlertActive = alert?.status === "ACTIVE";
+                  const isWebhookActive = alert?.eventWebhook.status === "ACTIVE";
+                  const hasAlertError = alertsError && !alert;
 
-                    {/* Alert Count Badge (visible when collapsed) */}
-                    {!expandedCards.has(bet.id) && (
-                      <span className="flex items-center gap-1 rounded-full bg-[#CDFF00]/10 px-2 py-0.5 text-xs font-medium text-[#CDFF00]">
-                        3 alerts
-                      </span>
-                    )}
-
-                    <div className="ml-auto flex items-center gap-3">
-                      <div className="flex items-center gap-1.5">
-                        <div className="h-1.5 w-1.5 rounded-full bg-[#CDFF00] animate-[pulse_2s_ease-in-out_infinite]" />
-                        <span className="text-xs text-gray-500">Live</span>
-                      </div>
-                      <motion.div
-                        animate={{ rotate: expandedCards.has(bet.id) ? 180 : 0 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <ChevronDown className="h-4 w-4 text-gray-500" />
-                      </motion.div>
-                    </div>
-                  </button>
-
-                  {/* Collapsible News Articles */}
-                  <AnimatePresence initial={false}>
-                    {expandedCards.has(bet.id) && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2, ease: "easeInOut" }}
-                        className="overflow-hidden"
-                      >
-                        <div className="space-y-2 px-6 pb-4">
-                          {/* Sample Article 1 */}
-                          <a
-                            href="#"
-                            className="group flex items-start gap-3 rounded-lg bg-gray-900/50 p-3 border border-gray-800/50 transition-all hover:border-gray-700 hover:bg-gray-900"
-                          >
-                            <Newspaper className="h-4 w-4 text-[#CDFF00] mt-0.5 shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-white group-hover:text-[#CDFF00] transition-colors line-clamp-2">
-                                Breaking: Major developments reported as analysts weigh in on market implications
-                              </p>
-                              <div className="flex items-center gap-2 mt-1.5">
-                                <span className="text-xs text-gray-500">Reuters</span>
-                                <span className="text-gray-600">•</span>
-                                <div className="flex items-center gap-1 text-xs text-gray-500">
-                                  <Clock className="h-3 w-3" />
-                                  <span>2 min ago</span>
-                                </div>
-                              </div>
-                            </div>
-                            <ExternalLink className="h-4 w-4 text-gray-600 group-hover:text-gray-400 shrink-0 mt-0.5" />
-                          </a>
-
-                          {/* Sample Article 2 */}
-                          <a
-                            href="#"
-                            className="group flex items-start gap-3 rounded-lg bg-gray-900/50 p-3 border border-gray-800/50 transition-all hover:border-gray-700 hover:bg-gray-900"
-                          >
-                            <Newspaper className="h-4 w-4 text-[#CDFF00] mt-0.5 shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-white group-hover:text-[#CDFF00] transition-colors line-clamp-2">
-                                Expert analysis: What the latest trends mean for prediction markets
-                              </p>
-                              <div className="flex items-center gap-2 mt-1.5">
-                                <span className="text-xs text-gray-500">Bloomberg</span>
-                                <span className="text-gray-600">•</span>
-                                <div className="flex items-center gap-1 text-xs text-gray-500">
-                                  <Clock className="h-3 w-3" />
-                                  <span>15 min ago</span>
-                                </div>
-                              </div>
-                            </div>
-                            <ExternalLink className="h-4 w-4 text-gray-600 group-hover:text-gray-400 shrink-0 mt-0.5" />
-                          </a>
-
-                          {/* Sample Article 3 */}
-                          <a
-                            href="#"
-                            className="group flex items-start gap-3 rounded-lg bg-gray-900/50 p-3 border border-gray-800/50 transition-all hover:border-gray-700 hover:bg-gray-900"
-                          >
-                            <Newspaper className="h-4 w-4 text-[#CDFF00] mt-0.5 shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-white group-hover:text-[#CDFF00] transition-colors line-clamp-2">
-                                Market update: Key indicators suggest shifting sentiment among traders
-                              </p>
-                              <div className="flex items-center gap-2 mt-1.5">
-                                <span className="text-xs text-gray-500">AP News</span>
-                                <span className="text-gray-600">•</span>
-                                <div className="flex items-center gap-1 text-xs text-gray-500">
-                                  <Clock className="h-3 w-3" />
-                                  <span>1 hour ago</span>
-                                </div>
-                              </div>
-                            </div>
-                            <ExternalLink className="h-4 w-4 text-gray-600 group-hover:text-gray-400 shrink-0 mt-0.5" />
-                          </a>
+                  return (
+                    <div className="border-t border-gray-800 bg-gray-950/50">
+                      {hasAlertError ? (
+                        // Alert loading error - show retry
+                        <div className="px-6 py-4">
+                          <div className="flex items-center gap-2 text-xs text-red-400">
+                            <AlertCircle className="h-3 w-3" />
+                            <span>Failed to load alerts</span>
+                            <button
+                              onClick={() => void refetchAlerts()}
+                              className="ml-auto text-red-300 underline hover:text-red-200"
+                            >
+                              Retry
+                            </button>
+                          </div>
                         </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                      ) : alert ? (
+                        // Alert exists - show status and controls
+                        <div className="flex items-center justify-between px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            {isAlertActive && isWebhookActive ? (
+                              <>
+                                <div className="relative flex items-center justify-center">
+                                  <Radio className="h-4 w-4 text-[#CDFF00]" />
+                                  <span className="absolute inline-flex h-full w-full rounded-full bg-[#CDFF00] opacity-30 animate-[pulse_1.5s_ease-in-out_infinite]" />
+                                </div>
+                                <span className="text-xs text-gray-400">Scanning for news...</span>
+                                <div className="flex items-center gap-1.5">
+                                  <div className="h-1.5 w-1.5 rounded-full bg-[#CDFF00] animate-[pulse_2s_ease-in-out_infinite]" />
+                                  <span className="text-xs text-gray-500">Live</span>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <Bell className="h-4 w-4 text-gray-500" />
+                                <span className="text-xs text-gray-500">
+                                  {alert.status === "PAUSED" ? "Alerts paused" :
+                                   alert.eventWebhook.status === "PENDING" ? "Setting up..." :
+                                   alert.eventWebhook.status === "FAILED" ? "Setup failed" :
+                                   alert.eventWebhook.status === "EXPIRED" ? "Event ended" :
+                                   "Alerts inactive"}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setPendingToggleAlertId(alert.id);
+                                toggleAlert.mutate({ alertId: alert.id });
+                              }}
+                              disabled={pendingToggleAlertId === alert.id || !isWebhookActive}
+                              className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                                isAlertActive
+                                  ? "bg-white/10 text-white hover:bg-white/20"
+                                  : "bg-[#CDFF00]/20 text-[#CDFF00] hover:bg-[#CDFF00]/30"
+                              } disabled:cursor-not-allowed disabled:opacity-50`}
+                            >
+                              {pendingToggleAlertId === alert.id ? "..." : isAlertActive ? "Pause" : "Resume"}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        // No alert - show enable button
+                        <div className="flex items-center justify-between px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <Bell className="h-4 w-4 text-gray-500" />
+                            <span className="text-xs text-gray-500">Get notified when news breaks</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setPendingAlertTicker(bet.eventTicker);
+                              addAlert.mutate({
+                                marketTicker: bet.eventTicker,
+                                eventTitle: bet.title
+                              });
+                            }}
+                            disabled={pendingAlertTicker === bet.eventTicker}
+                            className="cursor-pointer flex items-center gap-1.5 rounded-lg bg-[#CDFF00] px-3 py-1.5 text-xs font-medium text-black transition hover:bg-[#b8e600] disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {pendingAlertTicker === bet.eventTicker ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Bell className="h-3 w-3" />
+                            )}
+                            {pendingAlertTicker === bet.eventTicker ? "Enabling..." : "Enable Alerts"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </motion.div>
             ))}
           </div>
