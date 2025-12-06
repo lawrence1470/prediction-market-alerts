@@ -216,7 +216,7 @@ function getExclusionsForCategory(category: string): string[] {
 /**
  * Build the final Superfeedr query from search terms
  */
-function buildQueryFromTerms(searchTerms: string[], category: string = "other"): string {
+function buildQueryFromTerms(searchTerms: string[], category = "other"): string {
   // Quote each term for exact matching
   const quotedTerms = searchTerms.map((term) => `"${term}"`);
 

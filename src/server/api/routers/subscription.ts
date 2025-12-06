@@ -21,17 +21,15 @@ export const subscriptionRouter = createTRPCRouter({
     });
 
     // Create free tier subscription if none exists
-    if (!subscription) {
-      subscription = await ctx.db.subscription.create({
-        data: {
-          userId: ctx.session.user.id,
-          tier: "FREE",
-          status: "ACTIVE",
-          maxAlerts: TIER_LIMITS.FREE.maxAlerts,
-          maxNotificationsPerAlert: TIER_LIMITS.FREE.maxNotificationsPerAlert,
-        },
-      });
-    }
+    subscription ??= await ctx.db.subscription.create({
+      data: {
+        userId: ctx.session.user.id,
+        tier: "FREE",
+        status: "ACTIVE",
+        maxAlerts: TIER_LIMITS.FREE.maxAlerts,
+        maxNotificationsPerAlert: TIER_LIMITS.FREE.maxNotificationsPerAlert,
+      },
+    });
 
     return subscription;
   }),
