@@ -119,7 +119,7 @@ export default async function Home() {
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-4xl text-center">
             <h1 className="mb-8 text-5xl font-bold leading-tight text-white drop-shadow-[0_4px_32px_rgba(0,0,0,0.8)] sm:text-6xl lg:text-7xl">
-              The World's First Prediction Market Tracking Tool
+              The World&apos;s First Prediction Market Tracking Tool
             </h1>
             <p className="mx-auto mb-12 max-w-2xl text-lg text-white/90 drop-shadow-[0_2px_16px_rgba(0,0,0,0.8)]">
               Get the edge before the odds shift. Real-time news alerts delivered the moment they matter to your bets.

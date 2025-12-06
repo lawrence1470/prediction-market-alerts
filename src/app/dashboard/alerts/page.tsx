@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Loader2,
   Bell,
   ArrowLeft,
   Plus,

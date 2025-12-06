@@ -91,11 +91,12 @@ export function AsciiMatrixBackground({ className = "" }: AsciiMatrixBackgroundP
         if (y >= 0 && y < rows) {
           for (let i = 0; i < line.length; i++) {
             const x = startX + i;
-            if (x >= 0 && x < cols && grid[y]?.[x]) {
-              grid[y]![x]!.char = line[i] ?? " ";
-              grid[y]![x]!.isText = true;
-              grid[y]![x]!.targetOpacity = 0.9;
-              grid[y]![x]!.color = "rgba(205, 255, 0, OPACITY)"; // Lime for text
+            const cell = grid[y]?.[x];
+            if (x >= 0 && x < cols && cell) {
+              cell.char = line[i] ?? " ";
+              cell.isText = true;
+              cell.targetOpacity = 0.9;
+              cell.color = "rgba(205, 255, 0, OPACITY)"; // Lime for text
             }
           }
         }

@@ -221,7 +221,7 @@ export function AlertGroup({ alert, articles, totalArticles }: AlertGroupProps) 
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleLoadMore();
+                        void handleLoadMore();
                       }}
                       disabled={loadMoreQuery.isFetching}
                       className="mt-2 w-full rounded-lg border border-white/10 py-2.5 text-sm font-medium text-white/60 transition-colors hover:border-white/20 hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
@@ -240,9 +240,9 @@ export function AlertGroup({ alert, articles, totalArticles }: AlertGroupProps) 
                   </div>
                   <p className="text-sm font-medium text-white/60">No articles yet</p>
                   <p className="mt-1 text-xs text-white/40">
-                    We're monitoring for news about this event.
+                    We&apos;re monitoring for news about this event.
                     <br />
-                    You'll be notified when articles are published.
+                    You&apos;ll be notified when articles are published.
                   </p>
                 </div>
               )}
