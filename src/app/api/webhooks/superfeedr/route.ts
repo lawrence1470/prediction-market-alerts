@@ -15,6 +15,7 @@ import { NextResponse } from "next/server";
 import { db } from "~/server/db";
 import { verifySignature } from "~/server/services/superfeedr";
 import { sendNewsAlert, type ArticleData } from "~/server/services/email";
+import { sendSmsAlert } from "~/server/services/sms";
 import { formatEventTitle } from "~/server/utils/event-title";
 
 interface SuperfeedrItem {
@@ -92,6 +93,7 @@ export async function POST(request: Request) {
         user: {
           select: {
             email: true,
+            phone: true,
           },
         },
       },
@@ -108,6 +110,8 @@ export async function POST(request: Request) {
     // Process each article
     let emailsSent = 0;
     let emailsFailed = 0;
+    let smsSent = 0;
+    let smsFailed = 0;
 
     for (const item of items) {
       const article: ArticleData = {
@@ -118,18 +122,39 @@ export async function POST(request: Request) {
         publishedAt: item.published ? new Date(item.published * 1000) : undefined,
       };
 
-      // Send email to each user (continue on failure)
+      // Send notifications to each user (continue on failure)
       for (const alert of userAlerts) {
-        const result = await sendNewsAlert(alert.user.email, eventTitle, article);
-        if (result.success) {
+        // Send email notification
+        const emailResult = await sendNewsAlert(alert.user.email, eventTitle, article);
+        if (emailResult.success) {
           emailsSent++;
         } else {
           emailsFailed++;
           console.error("[Webhook] Failed to send email:", {
             userId: alert.userId,
             eventTicker: eventWebhook.eventTicker,
-            error: result.error,
+            error: emailResult.error,
           });
+        }
+
+        // Send SMS notification if user has a phone number
+        if (alert.user.phone) {
+          const smsResult = await sendSmsAlert(
+            alert.user.phone,
+            eventTitle,
+            article.title,
+            article.url,
+          );
+          if (smsResult.success) {
+            smsSent++;
+          } else {
+            smsFailed++;
+            console.error("[Webhook] Failed to send SMS:", {
+              userId: alert.userId,
+              eventTicker: eventWebhook.eventTicker,
+              error: smsResult.error,
+            });
+          }
         }
       }
     }
@@ -140,6 +165,8 @@ export async function POST(request: Request) {
       users: userAlerts.length,
       emailsSent,
       emailsFailed,
+      smsSent,
+      smsFailed,
     });
 
     // Always return 200 to acknowledge receipt
@@ -149,6 +176,8 @@ export async function POST(request: Request) {
       users: userAlerts.length,
       emailsSent,
       emailsFailed,
+      smsSent,
+      smsFailed,
     });
   } catch (error) {
     console.error("[Webhook] Unhandled error:", error);

@@ -31,6 +31,31 @@ export const env = createEnv({
       process.env.NODE_ENV === "production"
         ? z.string()
         : z.string().optional(),
+    // Twilio SMS
+    TWILIO_ACCOUNT_SID:
+      process.env.NODE_ENV === "production"
+        ? z.string()
+        : z.string().optional(),
+    TWILIO_AUTH_TOKEN:
+      process.env.NODE_ENV === "production"
+        ? z.string()
+        : z.string().optional(),
+    TWILIO_PHONE_NUMBER:
+      process.env.NODE_ENV === "production"
+        ? z.string()
+        : z.string().optional(),
+    TWILIO_TIMEOUT_MS: z.coerce.number().default(5000),
+    // Stripe
+    STRIPE_SECRET_KEY:
+      process.env.NODE_ENV === "production"
+        ? z.string()
+        : z.string().optional(),
+    STRIPE_WEBHOOK_SECRET:
+      process.env.NODE_ENV === "production"
+        ? z.string()
+        : z.string().optional(),
+    STRIPE_PRO_MONTHLY_PRICE_ID: z.string().optional(),
+    STRIPE_PRO_YEARLY_PRICE_ID: z.string().optional(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -42,7 +67,8 @@ export const env = createEnv({
    * `NEXT_PUBLIC_`.
    */
   client: {
-    // NEXT_PUBLIC_CLIENTVAR: z.string(),
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().optional(),
+    NEXT_PUBLIC_APP_URL: z.string().optional(),
   },
 
   /**
@@ -59,6 +85,16 @@ export const env = createEnv({
     SUPERFEEDR_TIMEOUT_MS: process.env.SUPERFEEDR_TIMEOUT_MS,
     RESEND_TIMEOUT_MS: process.env.RESEND_TIMEOUT_MS,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
+    TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
+    TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER,
+    TWILIO_TIMEOUT_MS: process.env.TWILIO_TIMEOUT_MS,
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+    STRIPE_PRO_MONTHLY_PRICE_ID: process.env.STRIPE_PRO_MONTHLY_PRICE_ID,
+    STRIPE_PRO_YEARLY_PRICE_ID: process.env.STRIPE_PRO_YEARLY_PRICE_ID,
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NODE_ENV: process.env.NODE_ENV,
   },
   /**
