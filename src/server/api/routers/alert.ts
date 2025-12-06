@@ -8,6 +8,7 @@
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { EventsApi, Configuration } from "kalshi-typescript";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   subscribe,
@@ -18,6 +19,15 @@ import {
 } from "~/server/services/superfeedr";
 import { extractEventTicker } from "~/server/services/query-generator";
 import { getTopicUrlForEventWithLLM } from "~/server/services/llm-query-generator";
+
+// Kalshi API client
+const kalshiConfig = new Configuration({
+  basePath: "https://api.elections.kalshi.com/trade-api/v2",
+});
+const kalshiEventsApi = new EventsApi(kalshiConfig);
+
+// Categories not supported by our platform
+const UNSUPPORTED_CATEGORIES = ["Sports"];
 
 // Build the webhook callback URL
 const getWebhookCallbackUrl = () => {
@@ -75,6 +85,29 @@ export const alertRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const eventTicker = extractEventTicker(input.marketTicker);
       const userId = ctx.session.user.id;
+
+      // Fetch event from Kalshi API to check category
+      try {
+        const response = await kalshiEventsApi.getEvent(eventTicker);
+        const category = response.data.event?.category;
+
+        if (category && UNSUPPORTED_CATEGORIES.includes(category)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `${category} events are not currently supported. We focus on crypto, economic, and political markets.`,
+          });
+        }
+      } catch (error) {
+        // If it's our own TRPCError, rethrow it
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+        // Log but don't block if Kalshi API fails - allow alert creation to proceed
+        console.warn("[Alert] Could not verify event category from Kalshi API:", {
+          eventTicker,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
 
       // Check if user already has an alert for this market
       const existingAlert = await ctx.db.userAlert.findUnique({

@@ -1,19 +1,18 @@
 /**
- * Query Generator Service
+ * Query Generator Service (Fallback)
  *
  * Parses Kalshi event tickers and generates Superfeedr track feed queries.
+ * This is used as a fallback when LLM-based generation is unavailable.
  *
  * Kalshi Ticker Hierarchy:
- * - Series: KXNFLSPREAD (market category)
- * - Event: KXNFLSPREAD-25DEC04DALDET (specific matchup/event)
- * - Market: KXNFLSPREAD-25DEC04DALDET-DET9 (specific bet outcome)
+ * - Series: KXBTC (market category)
+ * - Event: KXBTC-25DEC05 (specific date/event)
+ * - Market: KXBTC-25DEC05-T95 (specific bet outcome)
  *
- * We subscribe at the EVENT level for news alerts.
+ * Note: Sports events are blocked at the API level and not supported.
  */
 
 import {
-  NFL_TEAMS,
-  NBA_TEAMS,
   CRYPTO_ASSETS,
   ECONOMIC_EVENTS,
   QUERY_EXCLUSIONS,
@@ -33,8 +32,8 @@ export interface ParsedTicker {
  * Parse a Kalshi market or event ticker into its components
  *
  * Examples:
- * - "KXNFLSPREAD-25DEC04DALDET-DET9" -> { series: "KXNFLSPREAD", eventDate: "25DEC04", entities: ["DAL", "DET"], ... }
  * - "KXBTC-25DEC05" -> { series: "KXBTC", eventDate: "25DEC05", entities: ["BTC"], ... }
+ * - "KXFED-25JAN" -> { series: "KXFED", eventDate: "25JAN", entities: ["FED"], ... }
  *
  * @param ticker - The full market ticker or event ticker
  * @returns Parsed ticker components
@@ -60,63 +59,8 @@ export function parseEventTicker(ticker: string): ParsedTicker {
   if (parts.length >= 2 && parts[1]) {
     const eventPart = parts[1];
 
-    // NFL format: 25DEC04DALDET (date + team codes)
-    if (category === "nfl") {
-      // Extract date (first 7 chars: YYMMMDD)
-      const dateMatch = /^(\d{2}[A-Z]{3}\d{2})/.exec(eventPart);
-      if (dateMatch?.[1]) {
-        eventDate = dateMatch[1];
-        // Extract team codes (remaining chars, 3 each)
-        const teamsPart = eventPart.slice(7);
-        if (teamsPart.length >= 6) {
-          const team1 = teamsPart.slice(0, 3);
-          const team2 = teamsPart.slice(3, 6);
-          // Handle 2-char team codes like GB, KC, SF, TB, NE, NO, LV
-          if (NFL_TEAMS[team1]) {
-            entities.push(team1);
-          } else {
-            // Try 2-char code
-            const twoChar1 = teamsPart.slice(0, 2);
-            if (NFL_TEAMS[twoChar1]) {
-              entities.push(twoChar1);
-              const remaining = teamsPart.slice(2);
-              if (remaining.length >= 3) {
-                entities.push(remaining.slice(0, 3));
-              } else if (remaining.length >= 2 && NFL_TEAMS[remaining.slice(0, 2)]) {
-                entities.push(remaining.slice(0, 2));
-              }
-            }
-          }
-          if (entities.length < 2 && NFL_TEAMS[team2]) {
-            entities.push(team2);
-          }
-        }
-      }
-      eventTicker = `${series}-${eventPart}`;
-    }
-    // NBA format: 25DEC05LALBOS (date + team codes)
-    else if (category === "nba") {
-      // Extract date (first 7 chars: YYMMMDD)
-      const dateMatch = /^(\d{2}[A-Z]{3}\d{2})/.exec(eventPart);
-      if (dateMatch?.[1]) {
-        eventDate = dateMatch[1];
-        // Extract team codes (remaining chars, 3 each)
-        const teamsPart = eventPart.slice(7);
-        if (teamsPart.length >= 6) {
-          const team1 = teamsPart.slice(0, 3);
-          const team2 = teamsPart.slice(3, 6);
-          if (NBA_TEAMS[team1]) {
-            entities.push(team1);
-          }
-          if (NBA_TEAMS[team2]) {
-            entities.push(team2);
-          }
-        }
-      }
-      eventTicker = `${series}-${eventPart}`;
-    }
     // Crypto format: 25DEC05 (just date, asset derived from series)
-    else if (category === "crypto") {
+    if (category === "crypto") {
       eventDate = eventPart;
       // Extract crypto asset from series (e.g., KXBTC -> BTC)
       const assetMatch = /KX([A-Z]+)/.exec(series);
@@ -166,33 +110,7 @@ export function generateQuery(eventTicker: string): string {
   const searchTerms: string[] = [];
 
   // Build search terms based on category
-  if (parsed.category === "nfl") {
-    const teamTerms: string[] = [];
-    for (const entity of parsed.entities) {
-      const team = NFL_TEAMS[entity];
-      if (team) {
-        // Use quoted full name for precision
-        teamTerms.push(`"${team.searchTerms[0]}"`);
-      }
-    }
-    if (teamTerms.length > 0) {
-      // OR the team names together
-      searchTerms.push(`(${teamTerms.join(" | ")})`);
-    }
-  } else if (parsed.category === "nba") {
-    const teamTerms: string[] = [];
-    for (const entity of parsed.entities) {
-      const team = NBA_TEAMS[entity];
-      if (team) {
-        // Use quoted full name for precision
-        teamTerms.push(`"${team.searchTerms[0]}"`);
-      }
-    }
-    if (teamTerms.length > 0) {
-      // OR the team names together
-      searchTerms.push(`(${teamTerms.join(" | ")})`);
-    }
-  } else if (parsed.category === "crypto") {
+  if (parsed.category === "crypto") {
     for (const entity of parsed.entities) {
       const asset = CRYPTO_ASSETS[entity];
       if (asset) {
@@ -239,8 +157,8 @@ export function buildTopicUrl(query: string): string {
 /**
  * Extract the event ticker from a market ticker
  *
- * @param marketTicker - Full market ticker (e.g., "KXNFLSPREAD-25DEC04DALDET-DET9")
- * @returns Event ticker (e.g., "KXNFLSPREAD-25DEC04DALDET")
+ * @param marketTicker - Full market ticker (e.g., "KXBTC-25DEC05-T95")
+ * @returns Event ticker (e.g., "KXBTC-25DEC05")
  */
 export function extractEventTicker(marketTicker: string): string {
   const parts = marketTicker.split("-");
