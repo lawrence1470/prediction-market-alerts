@@ -28,19 +28,22 @@ model Post {
 }
 
 model User {
-  id               String      @id
-  name             String //@db.Text
-  email            String
-  emailVerified    Boolean     @default(false)
-  image            String? //@db.Text
-  wantsSportsAlerts Boolean    @default(false)
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @default(now()) @updatedAt
-  sessions         Session[]
-  accounts         Account[]
-  posts            Post[]
-  bets             Bet[]
-  userAlerts       UserAlert[]
+  id                      String      @id
+  name                    String //@db.Text
+  email                   String
+  emailVerified           Boolean     @default(false)
+  image                   String? //@db.Text
+  wantsSportsAlerts       Boolean     @default(false)
+  phone                   String?     // Verified phone number for SMS alerts
+  phonePromptDismissedAt  DateTime?   // When user last dismissed phone prompt
+  phonePromptDismissCount Int         @default(0) // How many times dismissed
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @default(now()) @updatedAt
+  sessions                Session[]
+  accounts                Account[]
+  posts                   Post[]
+  bets                    Bet[]
+  userAlerts              UserAlert[]
 
   @@unique([email])
   @@map("user")

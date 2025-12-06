@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { TrendingUp, LogOut, User, Plus, Trash2, Loader2, AlertCircle, Radio, Bell, Trophy, Lock, Check, Search, Hash } from "lucide-react";
+import { TrendingUp, LogOut, User, Plus, Trash2, Loader2, AlertCircle, Radio, Bell, Trophy, Lock, Check, Search, Hash, Clock, CheckCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { authClient } from "~/server/better-auth/client";
 import { api } from "~/trpc/react";
+import { PhoneCollectionModal } from "~/app/_components/PhoneCollectionModal";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -21,12 +22,15 @@ export default function DashboardPage() {
   const [showSportsNotification, setShowSportsNotification] = useState(false);
   const [inputMode, setInputMode] = useState<"search" | "eventId">("search");
   const [searchQuery, setSearchQuery] = useState("");
+  const [betFilter, setBetFilter] = useState<"active" | "past">("active");
   const [selectedEvent, setSelectedEvent] = useState<{
     eventTicker: string;
     title: string;
     subTitle: string;
     category: string;
   } | null>(null);
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [lastAddedEventTitle, setLastAddedEventTitle] = useState<string | null>(null);
   const utils = api.useUtils();
 
   // Fetch user preferences for sports interest
@@ -56,6 +60,19 @@ export default function DashboardPage() {
     undefined,
     { enabled: !!session }
   );
+
+  // Filter bets based on active/past status
+  const filteredBets = bets?.filter((bet) => {
+    if (betFilter === "active") {
+      return bet.isActive;
+    } else {
+      return !bet.isActive;
+    }
+  }) ?? [];
+
+  // Count for each category
+  const activeBetsCount = bets?.filter((b) => b.isActive).length ?? 0;
+  const pastBetsCount = bets?.filter((b) => !b.isActive).length ?? 0;
 
   const { data: alerts, error: alertsError, refetch: refetchAlerts } = api.alert.getAlerts.useQuery(
     undefined,
@@ -99,8 +116,23 @@ export default function DashboardPage() {
   const createBet = api.bet.create.useMutation({
     onSuccess: () => {
       void utils.bet.list.invalidate();
-      setEventTicker("");
       setShowAddForm(false);
+
+      // Check if we should prompt for phone number
+      const shouldPrompt = !userPrefs?.phone &&
+        (userPrefs?.phonePromptDismissCount ?? 0) < 3;
+
+      if (shouldPrompt) {
+        // Store the event title for the modal
+        const title = inputMode === "search"
+          ? selectedEvent?.title
+          : eventPreview?.event.title;
+        setLastAddedEventTitle(title ?? null);
+        setShowPhoneModal(true);
+      }
+
+      setEventTicker("");
+      setSelectedEvent(null);
     },
     onError: (error) => {
       setShowAddForm(false);
@@ -260,6 +292,48 @@ export default function DashboardPage() {
             <h1 className="text-3xl font-bold text-white">Your Bets</h1>
             <p className="mt-2 text-gray-400">Track your Kalshi positions</p>
           </div>
+          <div className="flex items-center gap-4">
+            {/* Active/Past Filter Toggle */}
+            {bets && bets.length > 0 && (
+              <div className="flex gap-1 rounded-lg bg-gray-800 p-1">
+                <button
+                  onClick={() => setBetFilter("active")}
+                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                    betFilter === "active"
+                      ? "bg-[#CDFF00] text-black"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                  Active
+                  {activeBetsCount > 0 && (
+                    <span className={`ml-1 rounded-full px-1.5 py-0.5 text-xs ${
+                      betFilter === "active" ? "bg-black/20" : "bg-gray-700"
+                    }`}>
+                      {activeBetsCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setBetFilter("past")}
+                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                    betFilter === "past"
+                      ? "bg-[#CDFF00] text-black"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  <CheckCircle className="h-3.5 w-3.5" />
+                  Past
+                  {pastBetsCount > 0 && (
+                    <span className={`ml-1 rounded-full px-1.5 py-0.5 text-xs ${
+                      betFilter === "past" ? "bg-black/20" : "bg-gray-700"
+                    }`}>
+                      {pastBetsCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
           <motion.button
             onClick={() => setShowAddForm(true)}
             whileHover={{ scale: 1.05 }}
@@ -270,6 +344,7 @@ export default function DashboardPage() {
             <Plus className="h-5 w-5" />
             Add Bet
           </motion.button>
+          </div>
         </div>
 
         {/* Add Bet Modal */}
@@ -622,6 +697,14 @@ export default function DashboardPage() {
           )}
         </AnimatePresence>
 
+        {/* Phone Collection Modal */}
+        <PhoneCollectionModal
+          isOpen={showPhoneModal}
+          onClose={() => setShowPhoneModal(false)}
+          onSuccess={() => setShowPhoneModal(false)}
+          eventTitle={lastAddedEventTitle ?? undefined}
+        />
+
         {/* Delete Confirmation Modal */}
         <AnimatePresence>
           {betToDelete && (
@@ -692,6 +775,7 @@ export default function DashboardPage() {
             </button>
           </div>
         ) : bets && bets.length > 0 ? (
+          filteredBets.length > 0 ? (
           <div className="relative grid gap-4">
             {/* Loading overlay when adding a bet */}
             <AnimatePresence>
@@ -709,7 +793,7 @@ export default function DashboardPage() {
                 </motion.div>
               )}
             </AnimatePresence>
-            {bets.map((bet) => (
+            {filteredBets.map((bet) => (
               <motion.div
                 key={bet.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -719,7 +803,20 @@ export default function DashboardPage() {
                 {/* Card Header */}
                 <div className="flex items-center justify-between p-6 pb-4">
                   <div className="flex-1">
-                    <div className="mb-1 text-xs text-[#CDFF00]">{bet.category}</div>
+                    <div className="mb-1 flex items-center gap-2">
+                      <span className="text-xs text-[#CDFF00]">{bet.category}</span>
+                      {!bet.isActive && (
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          bet.result === "yes"
+                            ? "bg-green-900/50 text-green-400"
+                            : bet.result === "no"
+                            ? "bg-red-900/50 text-red-400"
+                            : "bg-gray-700 text-gray-400"
+                        }`}>
+                          {bet.result === "yes" ? "Resolved: Yes" : bet.result === "no" ? "Resolved: No" : "Closed"}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-lg font-medium text-white">{bet.title}</div>
                     {bet.subtitle && (
                       <div className="text-sm text-gray-400">{bet.subtitle}</div>
@@ -836,6 +933,32 @@ export default function DashboardPage() {
               </motion.div>
             ))}
           </div>
+          ) : (
+            // Empty state for filtered results (bets exist but none match filter)
+            <div className="rounded-xl border border-gray-800 bg-gray-900 p-8 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-800">
+                {betFilter === "active" ? (
+                  <Clock className="h-8 w-8 text-gray-500" />
+                ) : (
+                  <CheckCircle className="h-8 w-8 text-gray-500" />
+                )}
+              </div>
+              <h2 className="mb-2 text-lg font-semibold text-white">
+                {betFilter === "active" ? "No active bets" : "No past bets"}
+              </h2>
+              <p className="text-sm text-gray-400">
+                {betFilter === "active"
+                  ? "All your bets have been resolved."
+                  : "You don't have any resolved bets yet."}
+              </p>
+              <button
+                onClick={() => setBetFilter(betFilter === "active" ? "past" : "active")}
+                className="mt-4 text-sm text-[#CDFF00] hover:underline"
+              >
+                View {betFilter === "active" ? "past" : "active"} bets
+              </button>
+            </div>
+          )
         ) : (
           <div className="rounded-3xl border border-gray-800 bg-gray-900 p-12 text-center">
             <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gray-800">
