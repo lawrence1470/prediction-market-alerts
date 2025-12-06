@@ -118,7 +118,7 @@ export default async function Home() {
       </header>
 
       {/* Hero */}
-      <section className="relative bg-black py-32 sm:py-40">
+      <section className="relative flex min-h-[calc(100vh-88px)] items-center bg-black py-16 sm:py-32">
         <LightBeamBackground />
         {/* Dark overlay for text contrast */}
         <div className="absolute inset-0 z-[1] bg-black/40" />
