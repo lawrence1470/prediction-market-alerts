@@ -12,6 +12,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { getSession } from "~/server/better-auth/server";
+import { LightBeamBackground } from "~/app/_components/light-beam-background";
 
 const stats = [
   { value: "50K+", unit: "", label: "Active traders using alerts", color: "bg-purple-100 text-purple-900", badge: "USERS" },
@@ -117,30 +118,25 @@ export default async function Home() {
       </header>
 
       {/* Hero */}
-      <section className="bg-black py-32 sm:py-40">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <section className="relative bg-black py-32 sm:py-40">
+        <LightBeamBackground />
+        {/* Dark overlay for text contrast */}
+        <div className="absolute inset-0 z-[1] bg-black/40" />
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-4xl text-center">
-            <h1 className="mb-8 text-5xl font-bold leading-tight text-white sm:text-6xl lg:text-7xl">
-              Never Miss a Market-Moving Alert Again
+            <h1 className="mb-8 text-5xl font-bold leading-tight text-white drop-shadow-[0_4px_32px_rgba(0,0,0,0.8)] sm:text-6xl lg:text-7xl">
+              The World's First Prediction Market Tracking Tool
             </h1>
-            <p className="mx-auto mb-12 max-w-2xl text-lg text-gray-400">
-              Get personalized news alerts tailored to your Kalshi bets. Stay ahead of the curve with real-time updates that could impact your positions.
+            <p className="mx-auto mb-12 max-w-2xl text-lg text-white/90 drop-shadow-[0_2px_16px_rgba(0,0,0,0.8)]">
+              Get the edge before the odds shift. Real-time news alerts delivered the moment they matter to your bets.
             </p>
-            <div className="flex flex-col justify-center gap-4 sm:flex-row">
-              <Link
-                href="/signup"
-                className="inline-flex items-center gap-2 rounded-full bg-[#CDFF00] px-8 py-3.5 font-medium text-black transition-colors hover:bg-[#b8e600]"
-              >
-                Get Started - For Free
-                <ArrowRight className="h-5 w-5" />
-              </Link>
-              <Link
-                href="/login"
-                className="rounded-full bg-white px-8 py-3.5 font-medium text-black transition-colors hover:bg-gray-100"
-              >
-                Book a Demo
-              </Link>
-            </div>
+            <Link
+              href="/signup"
+              className="inline-flex items-center gap-2 rounded-full bg-[#CDFF00] px-8 py-3.5 font-medium text-black transition-colors hover:bg-[#b8e600]"
+            >
+              Get Started - For Free
+              <ArrowRight className="h-5 w-5" />
+            </Link>
           </div>
         </div>
       </section>

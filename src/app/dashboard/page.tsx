@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { TrendingUp, LogOut, User, Plus, Trash2, Loader2, AlertCircle, Radio, Bell, Trophy, Lock, Check, Search, Hash, Clock, CheckCircle } from "lucide-react";
+import { TrendingUp, Plus, Trash2, Loader2, AlertCircle, Radio, Bell, Trophy, Lock, Check, Search, Hash, Clock, CheckCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { authClient } from "~/server/better-auth/client";
 import { api } from "~/trpc/react";
@@ -194,11 +193,6 @@ export default function DashboardPage() {
     deleteBet.mutate({ id: betToDelete.id });
   };
 
-  const handleSignOut = async () => {
-    await authClient.signOut();
-    router.push("/");
-  };
-
   const handleLookup = () => {
     if (!trimmedTicker) return;
     void fetchEvent();
@@ -252,41 +246,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
-      {/* Header */}
-      <header className="border-b border-gray-800">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-6">
-            <Link href="/" className="flex items-center">
-              <TrendingUp className="mr-2 h-6 w-6 text-[#CDFF00]" />
-              <span className="text-xl font-semibold text-white">Kalshi Tracker</span>
-            </Link>
-            <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard/alerts"
-                className="flex items-center gap-2 rounded-full border border-gray-700 px-4 py-2 text-gray-300 transition-colors hover:border-[#CDFF00] hover:text-[#CDFF00]"
-              >
-                <Bell className="h-4 w-4" />
-                Alerts
-              </Link>
-              <div className="flex items-center gap-2 rounded-full bg-gray-800 px-4 py-2">
-                <User className="h-4 w-4 text-gray-400" />
-                <span className="text-sm text-gray-300">{session.user.email}</span>
-              </div>
-              <button
-                onClick={handleSignOut}
-                className="cursor-pointer flex items-center gap-2 rounded-full border border-gray-700 px-4 py-2 text-gray-300 transition-colors hover:border-gray-600 hover:text-white"
-              >
-                <LogOut className="h-4 w-4" />
-                Sign out
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
+    <>
       {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-white">Your Bets</h1>
@@ -979,7 +941,7 @@ export default function DashboardPage() {
             </motion.button>
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </>
   );
 }
