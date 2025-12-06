@@ -15,13 +15,6 @@ import { getSession } from "~/server/better-auth/server";
 import { LightBeamBackground } from "~/app/_components/light-beam-background";
 import { AsciiMatrixBackground } from "~/app/_components/ascii-matrix-background";
 
-const stats = [
-  { value: "50K+", unit: "", label: "Active traders using alerts", color: "bg-purple-100 text-purple-900", badge: "USERS" },
-  { value: "2.5", unit: "sec", label: "Average alert delivery time", color: "bg-[#CDFF00] text-gray-900", badge: "SPEED" },
-  { value: "94", unit: "%", label: "Users report better decisions", color: "bg-teal-100 text-teal-900", badge: "IMPACT" },
-  { value: "1M+", unit: "", label: "News alerts sent monthly", color: "bg-white text-gray-900", badge: "SCALE" },
-];
-
 const features = [
   {
     icon: Bell,
@@ -151,46 +144,196 @@ export default async function Home() {
         <div className="absolute bottom-0 left-0 h-96 w-96 rounded-full bg-purple-500 opacity-10 blur-[120px]"></div>
 
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-16">
-            <div className="mb-8 inline-flex items-center gap-3">
-              <div className="h-px w-12 bg-[#CDFF00]"></div>
-              <span className="text-sm uppercase tracking-widest text-[#CDFF00]">Platform Metrics</span>
-            </div>
-            <h2 className="mb-8 max-w-4xl text-5xl font-bold text-white sm:text-6xl lg:text-7xl">
-              The numbers don&apos;t lie
+          {/* Title Section - Now at Top */}
+          <div className="mb-20 text-center">
+            <span className="mb-4 inline-block rounded-full border border-gray-700 bg-gray-800/50 px-4 py-1.5 text-xs font-medium uppercase tracking-widest text-gray-400">
+              Transformation
+            </span>
+            <h2 className="mb-6 text-6xl font-bold tracking-tight text-white sm:text-7xl lg:text-8xl">
+              Before
+              <span className="text-[#CDFF00]"> &amp; </span>
+              After
             </h2>
+            <p className="mx-auto max-w-2xl text-xl text-gray-400">
+              Stop scrolling through Twitter hoping to catch breaking news.<br className="hidden sm:block" />
+              Get instant alerts matched to your open positions.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* Large featured stat */}
-            <div className="flex min-h-[400px] flex-col justify-between rounded-3xl bg-white p-12 lg:row-span-2">
-              <div>
-                <div className="mb-6 inline-block rounded-full bg-black px-4 py-1.5 text-xs uppercase tracking-wider text-white">
-                  {stats[0]?.badge}
-                </div>
-                <div className="mb-6">
-                  <div className="mb-2 text-8xl font-bold text-black sm:text-9xl">
-                    {stats[0]?.value}
-                    <span className="text-6xl">{stats[0]?.unit}</span>
+          {/* Mockup Screenshots */}
+          <div className="relative flex flex-col items-center justify-center gap-12 lg:flex-row lg:items-start lg:gap-8">
+            {/* Hand-drawn decorative arrow - top */}
+            <svg className="absolute -top-16 left-1/2 hidden h-20 w-32 -translate-x-1/2 text-[#CDFF00]/40 lg:block" viewBox="0 0 128 80">
+              <path d="M20 60 C40 20, 80 20, 108 50" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="4 6" />
+              <path d="M100 42 L108 50 L98 54" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+
+            {/* Before Mockup */}
+            <div className="group relative w-full max-w-lg">
+              {/* Label */}
+              <div className="mb-4 flex items-center gap-3">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/20 text-sm font-bold text-red-400">✕</span>
+                <span className="text-lg font-semibold text-gray-400">Without Kalshi Tracker</span>
+              </div>
+              {/* Card with perspective */}
+              <div className="relative transform transition-all duration-500 [transform-style:preserve-3d] group-hover:scale-[1.02] lg:-rotate-2 lg:group-hover:rotate-0">
+                {/* Shadow/glow */}
+                <div className="absolute inset-0 -z-10 translate-x-4 translate-y-4 rounded-2xl bg-red-500/5 blur-xl"></div>
+                <div className="overflow-hidden rounded-2xl border border-gray-700/50 bg-gradient-to-br from-gray-900 to-gray-950 shadow-2xl">
+                  {/* Browser Header */}
+                  <div className="flex items-center gap-2 border-b border-gray-800 bg-gray-900 px-4 py-3">
+                    <div className="flex gap-1.5">
+                      <div className="h-3 w-3 rounded-full bg-red-500/80"></div>
+                      <div className="h-3 w-3 rounded-full bg-yellow-500/80"></div>
+                      <div className="h-3 w-3 rounded-full bg-green-500/80"></div>
+                    </div>
+                    <div className="ml-4 flex-1 rounded-lg bg-gray-800 px-3 py-1.5 text-xs text-gray-500">
+                      twitter.com/search?q=kalshi+news
+                    </div>
+                  </div>
+                  {/* Content */}
+                  <div className="p-6">
+                    {/* Multiple tweet skeletons */}
+                    {[1, 2].map((i) => (
+                      <div key={i} className={`${i > 1 ? "mt-4 border-t border-gray-800 pt-4" : ""}`}>
+                        <div className="flex items-start gap-3">
+                          <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gray-800"></div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <div className="h-3 w-20 rounded bg-gray-700"></div>
+                              <div className="h-2 w-12 rounded bg-gray-800"></div>
+                            </div>
+                            <div className="mt-2 space-y-1.5">
+                              <div className="h-3 w-full rounded bg-gray-800"></div>
+                              <div className="h-3 w-4/5 rounded bg-gray-800"></div>
+                            </div>
+                            <div className="mt-3 flex gap-6">
+                              <div className="h-4 w-8 rounded bg-gray-800"></div>
+                              <div className="h-4 w-8 rounded bg-gray-800"></div>
+                              <div className="h-4 w-8 rounded bg-gray-800"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {/* Warning banner */}
+                    <div className="mt-6 rounded-xl border border-red-500/20 bg-gradient-to-r from-red-500/10 to-red-600/5 p-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">😰</span>
+                        <div>
+                          <p className="text-sm font-medium text-red-400">News is 2+ hours old</p>
+                          <p className="text-xs text-gray-500">Market already moved. You missed it.</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-              <p className="text-xl text-gray-600">{stats[0]?.label}</p>
             </div>
 
-            {/* Smaller stats */}
-            {stats.slice(1).map((stat, index) => (
-              <div key={index} className={`${stat.color} rounded-3xl p-8`}>
-                <div className="mb-4 inline-block rounded-full bg-black/10 px-3 py-1 text-xs uppercase tracking-wider">
-                  {stat.badge}
-                </div>
-                <div className="mb-3">
-                  <span className="text-6xl font-bold">{stat.value}</span>
-                  <span className="ml-1 text-4xl font-bold">{stat.unit}</span>
-                </div>
-                <p className="text-sm opacity-80">{stat.label}</p>
+            {/* Center Arrow */}
+            <div className="flex flex-col items-center justify-center py-4 lg:py-20">
+              <svg className="h-16 w-16 rotate-90 text-[#CDFF00] lg:h-24 lg:w-24 lg:rotate-0" viewBox="0 0 100 50">
+                <path
+                  d="M5 25 C20 10, 40 10, 50 25 C60 40, 80 40, 95 25"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeDasharray="8 6"
+                  className="animate-pulse"
+                />
+                <path d="M85 18 L95 25 L85 32" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+
+            {/* After Mockup */}
+            <div className="group relative w-full max-w-lg">
+              {/* Label */}
+              <div className="mb-4 flex items-center gap-3">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#CDFF00]/20 text-sm font-bold text-[#CDFF00]">✓</span>
+                <span className="text-lg font-semibold text-white">With Kalshi Tracker</span>
               </div>
-            ))}
+              {/* Card with perspective */}
+              <div className="relative transform transition-all duration-500 [transform-style:preserve-3d] group-hover:scale-[1.02] lg:rotate-2 lg:group-hover:rotate-0">
+                {/* Glow effect */}
+                <div className="absolute inset-0 -z-10 translate-x-4 translate-y-4 rounded-2xl bg-[#CDFF00]/10 blur-xl"></div>
+                <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-br from-[#CDFF00]/30 via-transparent to-[#CDFF00]/10"></div>
+                <div className="relative overflow-hidden rounded-2xl border border-[#CDFF00]/20 bg-gradient-to-br from-gray-900 to-gray-950 shadow-2xl shadow-[#CDFF00]/5">
+                  {/* Browser Header */}
+                  <div className="flex items-center gap-2 border-b border-gray-800 bg-gray-900 px-4 py-3">
+                    <div className="flex gap-1.5">
+                      <div className="h-3 w-3 rounded-full bg-red-500/80"></div>
+                      <div className="h-3 w-3 rounded-full bg-yellow-500/80"></div>
+                      <div className="h-3 w-3 rounded-full bg-green-500/80"></div>
+                    </div>
+                    <div className="ml-4 flex-1 rounded-lg bg-gray-800 px-3 py-1.5 text-xs text-gray-500">
+                      kalshitracker.com/dashboard
+                    </div>
+                  </div>
+                  {/* Content */}
+                  <div className="p-6">
+                    {/* Header */}
+                    <div className="mb-5 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5 text-[#CDFF00]" />
+                        <span className="font-semibold text-white">Your Alerts</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="relative flex h-2 w-2">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#CDFF00] opacity-75"></span>
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-[#CDFF00]"></span>
+                        </span>
+                        <span className="text-xs font-medium text-[#CDFF00]">Live</span>
+                      </div>
+                    </div>
+                    {/* Alert Cards */}
+                    <div className="space-y-3">
+                      <div className="rounded-xl border border-[#CDFF00]/30 bg-[#CDFF00]/5 p-4">
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="text-sm font-semibold text-[#CDFF00]">🔔 Breaking: Fed Rate Decision</span>
+                          <span className="rounded-full bg-[#CDFF00]/20 px-2 py-0.5 text-xs font-medium text-[#CDFF00]">2s ago</span>
+                        </div>
+                        <p className="text-sm text-gray-300">Federal Reserve holds rates steady at 5.25%...</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="rounded bg-gray-800 px-2 py-0.5 text-xs text-gray-400">FED-RATE</span>
+                          <span className="text-xs text-[#CDFF00]">+12% position impact</span>
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-gray-700 bg-gray-800/30 p-4">
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-300">📊 BTC Price Movement</span>
+                          <span className="text-xs text-gray-500">1m ago</span>
+                        </div>
+                        <p className="text-sm text-gray-400">Your BTCUSD position affected by...</p>
+                      </div>
+                    </div>
+                    {/* Success banner */}
+                    <div className="mt-5 rounded-xl border border-[#CDFF00]/30 bg-gradient-to-r from-[#CDFF00]/10 to-[#CDFF00]/5 p-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">🚀</span>
+                        <div>
+                          <p className="text-sm font-medium text-[#CDFF00]">You&apos;re 2 hours ahead</p>
+                          <p className="text-xs text-gray-400">React before the market moves.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div className="mt-20 text-center">
+            <Link
+              href="/signup"
+              className="group inline-flex items-center gap-2 rounded-full bg-[#CDFF00] px-10 py-4 text-lg font-semibold text-black transition-all hover:bg-[#b8e600] hover:shadow-lg hover:shadow-[#CDFF00]/20"
+            >
+              Start Trading Smarter
+              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+            </Link>
+            <p className="mt-4 text-sm text-gray-500">Free to start. No credit card required.</p>
           </div>
         </div>
       </section>

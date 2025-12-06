@@ -376,34 +376,42 @@ export const alertRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const articlesPerAlert = input?.articlesPerAlert ?? 3;
 
+      // Get alerts with eventWebhook data
       const alerts = await ctx.db.userAlert.findMany({
         where: {
           userId: ctx.session.user.id,
         },
         include: {
-          eventWebhook: {
-            select: {
-              eventTicker: true,
-              status: true,
-              searchQuery: true,
-              articles: {
-                take: articlesPerAlert,
-                orderBy: { createdAt: "desc" },
-              },
-              _count: { select: { articles: true } },
-            },
-          },
+          eventWebhook: true,
         },
         orderBy: {
           createdAt: "desc",
         },
       });
 
-      return alerts.map((alert) => ({
-        ...alert,
-        articles: alert.eventWebhook.articles,
-        totalArticles: alert.eventWebhook._count.articles,
-      }));
+      // For each alert, get articles and count
+      const alertsWithArticles = await Promise.all(
+        alerts.map(async (alert) => {
+          const [articles, totalArticles] = await Promise.all([
+            ctx.db.newsArticle.findMany({
+              where: { eventTicker: alert.eventTicker },
+              take: articlesPerAlert,
+              orderBy: { createdAt: "desc" },
+            }),
+            ctx.db.newsArticle.count({
+              where: { eventTicker: alert.eventTicker },
+            }),
+          ]);
+
+          return {
+            ...alert,
+            articles,
+            totalArticles,
+          };
+        })
+      );
+
+      return alertsWithArticles;
     }),
 
   /**
