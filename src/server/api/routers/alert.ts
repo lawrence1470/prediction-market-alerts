@@ -363,4 +363,90 @@ export const alertRouter = createTRPCRouter({
 
       return updatedAlert;
     }),
+
+  /**
+   * Get all alerts with their articles for the news feed view
+   */
+  getAlertsWithArticles: protectedProcedure
+    .input(
+      z.object({
+        articlesPerAlert: z.number().min(1).max(20).default(3),
+      }).optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const articlesPerAlert = input?.articlesPerAlert ?? 3;
+
+      const alerts = await ctx.db.userAlert.findMany({
+        where: {
+          userId: ctx.session.user.id,
+        },
+        include: {
+          eventWebhook: {
+            select: {
+              eventTicker: true,
+              status: true,
+              searchQuery: true,
+              articles: {
+                take: articlesPerAlert,
+                orderBy: { createdAt: "desc" },
+              },
+              _count: { select: { articles: true } },
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+
+      return alerts.map((alert) => ({
+        ...alert,
+        articles: alert.eventWebhook.articles,
+        totalArticles: alert.eventWebhook._count.articles,
+      }));
+    }),
+
+  /**
+   * Get more articles for a specific event (pagination)
+   */
+  getMoreArticles: protectedProcedure
+    .input(
+      z.object({
+        eventTicker: z.string(),
+        cursor: z.string().optional(),
+        limit: z.number().min(1).max(50).default(10),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      // Verify user has access to this event
+      const hasAccess = await ctx.db.userAlert.findFirst({
+        where: {
+          userId: ctx.session.user.id,
+          eventTicker: input.eventTicker,
+        },
+      });
+
+      if (!hasAccess) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const articles = await ctx.db.newsArticle.findMany({
+        where: { eventTicker: input.eventTicker },
+        take: input.limit + 1, // +1 to check if more exist
+        cursor: input.cursor ? { id: input.cursor } : undefined,
+        orderBy: { createdAt: "desc" },
+        skip: input.cursor ? 1 : 0, // Skip the cursor itself
+      });
+
+      let nextCursor: string | undefined = undefined;
+      if (articles.length > input.limit) {
+        const nextItem = articles.pop();
+        nextCursor = nextItem?.id;
+      }
+
+      return {
+        articles,
+        nextCursor,
+      };
+    }),
 });

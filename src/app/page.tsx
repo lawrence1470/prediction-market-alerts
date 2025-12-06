@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { getSession } from "~/server/better-auth/server";
 import { LightBeamBackground } from "~/app/_components/light-beam-background";
+import { AsciiMatrixBackground } from "~/app/_components/ascii-matrix-background";
 
 const stats = [
   { value: "50K+", unit: "", label: "Active traders using alerts", color: "bg-purple-100 text-purple-900", badge: "USERS" },
@@ -143,6 +144,8 @@ export default async function Home() {
 
       {/* Stats */}
       <section className="relative overflow-hidden bg-gradient-to-br from-gray-950 via-black to-gray-900 py-32">
+        {/* ASCII Matrix Background */}
+        <AsciiMatrixBackground />
         {/* Animated background gradient orbs */}
         <div className="absolute right-0 top-0 h-96 w-96 rounded-full bg-[#CDFF00] opacity-10 blur-[120px]"></div>
         <div className="absolute bottom-0 left-0 h-96 w-96 rounded-full bg-purple-500 opacity-10 blur-[120px]"></div>

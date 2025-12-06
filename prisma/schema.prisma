@@ -156,8 +156,35 @@ model EventWebhook {
   updatedAt       DateTime           @updatedAt
 
   userAlerts UserAlert[]
+  articles   NewsArticle[]
 
   @@map("event_webhook")
+}
+
+model NewsArticle {
+  id          String    @id @default(cuid())
+
+  // Article content
+  title       String
+  summary     String?   @db.Text
+  url         String
+  imageUrl    String?   // OG image from article
+  source      String?   // Publisher name
+  publishedAt DateTime?
+
+  // Relationships
+  eventTicker  String
+  eventWebhook EventWebhook @relation(fields: [eventTicker], references: [eventTicker], onDelete: Cascade)
+
+  // Deduplication
+  urlHash String @unique // MD5 hash of URL for dedup
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  @@index([eventTicker])
+  @@index([createdAt])
+  @@map("news_article")
 }
 
 model UserAlert {

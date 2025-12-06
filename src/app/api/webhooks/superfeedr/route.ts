@@ -11,6 +11,7 @@
  * 5. Always return 200 to acknowledge receipt
  */
 
+import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { db } from "~/server/db";
 import { verifySignature } from "~/server/services/superfeedr";
@@ -112,12 +113,41 @@ export async function POST(request: Request) {
     let emailsFailed = 0;
     let smsSent = 0;
     let smsFailed = 0;
+    let articlesStored = 0;
 
     for (const item of items) {
+      const articleUrl = item.permalinkUrl ?? item.id;
+      const urlHash = crypto.createHash("md5").update(articleUrl).digest("hex");
+
+      // Store article in database (upsert to handle duplicates)
+      try {
+        await db.newsArticle.upsert({
+          where: { urlHash },
+          create: {
+            eventTicker: eventWebhook.eventTicker,
+            title: item.title ?? "News Update",
+            summary: item.summary ?? null,
+            url: articleUrl,
+            imageUrl: null, // Image extraction happens in background job
+            source: item.actor?.displayName ?? null,
+            publishedAt: item.published ? new Date(item.published * 1000) : null,
+            urlHash,
+          },
+          update: {}, // Don't update if exists
+        });
+        articlesStored++;
+      } catch (error) {
+        console.error("[Webhook] Failed to store article:", {
+          eventTicker: eventWebhook.eventTicker,
+          url: articleUrl,
+          error,
+        });
+      }
+
       const article: ArticleData = {
         title: item.title ?? "News Update",
         summary: item.summary,
-        url: item.permalinkUrl ?? "#",
+        url: articleUrl,
         source: item.actor?.displayName,
         publishedAt: item.published ? new Date(item.published * 1000) : undefined,
       };
@@ -162,6 +192,7 @@ export async function POST(request: Request) {
     console.log("[Webhook] Processed notification:", {
       eventTicker: eventWebhook.eventTicker,
       items: items.length,
+      articlesStored,
       users: userAlerts.length,
       emailsSent,
       emailsFailed,
@@ -173,6 +204,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       received: true,
       items: items.length,
+      articlesStored,
       users: userAlerts.length,
       emailsSent,
       emailsFailed,

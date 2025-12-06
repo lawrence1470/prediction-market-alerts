@@ -11,14 +11,14 @@ import {
 import { motion } from "framer-motion";
 import { authClient } from "~/server/better-auth/client";
 import { api } from "~/trpc/react";
-import { AlertCard } from "~/app/_components/AlertCard";
+import { AlertGroup } from "~/app/_components/AlertGroup";
 
 export default function AlertsPage() {
   const router = useRouter();
   const { data: session, isPending: sessionPending } = authClient.useSession();
 
-  const { data: alerts, isLoading: alertsLoading } = api.alert.getAlerts.useQuery(
-    undefined,
+  const { data: alertsData, isLoading: alertsLoading } = api.alert.getAlertsWithArticles.useQuery(
+    { articlesPerAlert: 3 },
     { enabled: !!session }
   );
 
@@ -36,7 +36,7 @@ export default function AlertsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
       {/* Back to Dashboard */}
       <Link
         href="/dashboard"
@@ -50,7 +50,7 @@ export default function AlertsPage() {
         <div>
           <h1 className="text-3xl font-bold text-white">News Alerts</h1>
           <p className="mt-2 text-gray-400">
-            Manage your real-time news alerts for Kalshi events
+            Real-time news for your Kalshi events
           </p>
         </div>
         <motion.button
@@ -67,18 +67,47 @@ export default function AlertsPage() {
 
       {/* Alerts List */}
       {alertsLoading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-[#CDFF00]" />
+        <div className="space-y-4">
+          {/* Skeleton loading */}
+          {[1, 2].map((i) => (
+            <div
+              key={i}
+              className="animate-pulse rounded-2xl border border-white/10 bg-white/5 p-4"
+            >
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <div className="h-5 w-40 rounded bg-white/10" />
+                  <div className="h-4 w-60 rounded bg-white/5" />
+                </div>
+                <div className="h-8 w-8 rounded bg-white/5" />
+              </div>
+              <div className="mt-4 space-y-3 border-t border-white/5 pt-4">
+                {[1, 2, 3].map((j) => (
+                  <div key={j} className="flex gap-4">
+                    <div className="h-20 w-32 rounded-lg bg-white/5" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 w-3/4 rounded bg-white/10" />
+                      <div className="h-3 w-1/2 rounded bg-white/5" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
-      ) : alerts && alerts.length > 0 ? (
-        <div className="grid gap-4">
-          {alerts.map((alert) => (
+      ) : alertsData && alertsData.length > 0 ? (
+        <div className="space-y-6">
+          {alertsData.map((alertWithArticles) => (
             <motion.div
-              key={alert.id}
+              key={alertWithArticles.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <AlertCard alert={alert} />
+              <AlertGroup
+                alert={alertWithArticles}
+                articles={alertWithArticles.articles}
+                totalArticles={alertWithArticles.totalArticles}
+              />
             </motion.div>
           ))}
         </div>
