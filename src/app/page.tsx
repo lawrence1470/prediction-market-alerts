@@ -307,7 +307,7 @@ export default async function Home() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-gray-400 transition-colors hover:text-[#CDFF00]">
+                  <Link href="/pricing" className="text-gray-400 transition-colors hover:text-[#CDFF00]">
                     Pricing
                   </Link>
                 </li>

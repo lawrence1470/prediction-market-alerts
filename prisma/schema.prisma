@@ -28,22 +28,24 @@ model Post {
 }
 
 model User {
-  id                      String      @id
+  id                      String        @id
   name                    String //@db.Text
   email                   String
-  emailVerified           Boolean     @default(false)
+  emailVerified           Boolean       @default(false)
   image                   String? //@db.Text
-  wantsSportsAlerts       Boolean     @default(false)
-  phone                   String?     // Verified phone number for SMS alerts
-  phonePromptDismissedAt  DateTime?   // When user last dismissed phone prompt
-  phonePromptDismissCount Int         @default(0) // How many times dismissed
-  createdAt               DateTime    @default(now())
-  updatedAt               DateTime    @default(now()) @updatedAt
+  wantsSportsAlerts       Boolean       @default(false)
+  phone                   String?       // Verified phone number for SMS alerts
+  phonePromptDismissedAt  DateTime?     // When user last dismissed phone prompt
+  phonePromptDismissCount Int           @default(0) // How many times dismissed
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @default(now()) @updatedAt
   sessions                Session[]
   accounts                Account[]
   posts                   Post[]
   bets                    Bet[]
   userAlerts              UserAlert[]
+  subscription            Subscription?
+  usageTracking           UsageTracking[]
 
   @@unique([email])
   @@map("user")
@@ -129,6 +131,19 @@ enum UserAlertStatus {
   EXPIRED
 }
 
+enum SubscriptionTier {
+  FREE
+  PRO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+  TRIALING
+}
+
 model EventWebhook {
   id              String             @id @default(cuid())
   eventTicker     String             @unique
@@ -161,4 +176,56 @@ model UserAlert {
   @@index([userId])
   @@index([eventTicker])
   @@map("user_alert")
+}
+
+// ==========================================
+// Stripe Subscription Models
+// ==========================================
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String             @unique
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Stripe identifiers
+  stripeCustomerId     String?            @unique
+  stripeSubscriptionId String?            @unique
+  stripePriceId        String?
+
+  // Subscription details
+  tier                 SubscriptionTier   @default(FREE)
+  status               SubscriptionStatus @default(ACTIVE)
+
+  // Limits for current tier
+  maxAlerts            Int                @default(1)
+  maxNotificationsPerAlert Int            @default(3) // -1 = unlimited
+
+  // Billing cycle
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+
+  // Timestamps
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@index([stripeCustomerId])
+  @@map("subscription")
+}
+
+model UsageTracking {
+  id                String   @id @default(cuid())
+  userId            String
+  alertId           String
+  notificationsSent Int      @default(0)
+  resetAt           DateTime // When to reset counter (monthly)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, alertId])
+  @@index([userId])
+  @@index([alertId])
+  @@map("usage_tracking")
 }

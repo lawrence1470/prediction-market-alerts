@@ -19,6 +19,7 @@ import {
 } from "~/server/services/superfeedr";
 import { extractEventTicker } from "~/server/services/query-generator";
 import { getTopicUrlForEventWithLLM } from "~/server/services/llm-query-generator";
+import { TIER_LIMITS } from "~/server/stripe/client";
 
 // Kalshi API client
 const kalshiConfig = new Configuration({
@@ -85,6 +86,24 @@ export const alertRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const eventTicker = extractEventTicker(input.marketTicker);
       const userId = ctx.session.user.id;
+
+      // Check subscription limits
+      const subscription = await ctx.db.subscription.findUnique({
+        where: { userId },
+      });
+
+      const maxAlerts = subscription?.maxAlerts ?? TIER_LIMITS.FREE.maxAlerts;
+
+      const alertCount = await ctx.db.userAlert.count({
+        where: { userId },
+      });
+
+      if (alertCount >= maxAlerts) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `You've reached your limit of ${maxAlerts} alert${maxAlerts === 1 ? "" : "s"}. Upgrade to Pro for up to ${TIER_LIMITS.PRO.maxAlerts} alerts.`,
+        });
+      }
 
       // Fetch event from Kalshi API to check category
       try {
