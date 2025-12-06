@@ -1,6 +1,7 @@
 import { alertRouter } from "~/server/api/routers/alert";
 import { betRouter } from "~/server/api/routers/bet";
 import { kalshiRouter } from "~/server/api/routers/kalshi";
+import { userRouter } from "~/server/api/routers/user";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -12,6 +13,7 @@ export const appRouter = createTRPCRouter({
   alert: alertRouter,
   bet: betRouter,
   kalshi: kalshiRouter,
+  user: userRouter,
 });
 
 // export type definition of API

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { TrendingUp, LogOut, User, Plus, Trash2, Loader2, AlertCircle, Radio, Bell } from "lucide-react";
+import { TrendingUp, LogOut, User, Plus, Trash2, Loader2, AlertCircle, Radio, Bell, Trophy, Lock, Check, Search, Hash } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { authClient } from "~/server/better-auth/client";
 import { api } from "~/trpc/react";
@@ -18,8 +18,39 @@ export default function DashboardPage() {
   const [pendingAlertTicker, setPendingAlertTicker] = useState<string | null>(null);
   const [pendingToggleAlertId, setPendingToggleAlertId] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<{ title: string; message: string } | null>(null);
-
+  const [showSportsNotification, setShowSportsNotification] = useState(false);
+  const [inputMode, setInputMode] = useState<"search" | "eventId">("search");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedEvent, setSelectedEvent] = useState<{
+    eventTicker: string;
+    title: string;
+    subTitle: string;
+    category: string;
+  } | null>(null);
   const utils = api.useUtils();
+
+  // Fetch user preferences for sports interest
+  const { data: userPrefs } = api.user.getPreferences.useQuery(undefined, {
+    enabled: !!session,
+  });
+
+  // Mutation to update sports interest
+  const setSportsInterest = api.user.setSportsInterest.useMutation({
+    onSuccess: () => {
+      void utils.user.getPreferences.invalidate();
+      setShowSportsNotification(false);
+      setShowAddForm(false);
+      setEventTicker("");
+    },
+    onError: (error) => {
+      setMutationError({
+        title: "Failed to Save Preference",
+        message: error.message || "Could not save your notification preference. Please try again."
+      });
+    },
+  });
+
+  const wantsSportsAlerts = userPrefs?.wantsSportsAlerts ?? false;
 
   const { data: bets, isLoading: betsLoading, error: betsError, refetch: refetchBets } = api.bet.list.useQuery(
     undefined,
@@ -30,6 +61,24 @@ export default function DashboardPage() {
     undefined,
     { enabled: !!session }
   );
+
+  // Fetch all open events for search
+  const { data: allEvents, isLoading: eventsLoading } = api.kalshi.getEvents.useQuery(
+    undefined,
+    { enabled: !!session && showAddForm && inputMode === "search" }
+  );
+
+  // Filter events based on search query (only show results when user has typed something)
+  const filteredEvents = searchQuery.trim()
+    ? (allEvents?.filter((event) => {
+        const query = searchQuery.toLowerCase();
+        return (
+          event.title.toLowerCase().includes(query) ||
+          event.subTitle.toLowerCase().includes(query) ||
+          event.eventTicker.toLowerCase().includes(query)
+        );
+      }).slice(0, 20) ?? [])
+    : [];
 
   // Helper to find alert for a specific event ticker
   const getAlertForBet = (eventTicker: string) => {
@@ -101,6 +150,13 @@ export default function DashboardPage() {
     },
   });
 
+  // Show sports notification when a sports event is detected
+  useEffect(() => {
+    if (eventPreview?.event.category === "Sports" && !wantsSportsAlerts) {
+      setShowSportsNotification(true);
+    }
+  }, [eventPreview, wantsSportsAlerts]);
+
   const handleDeleteBet = () => {
     if (!betToDelete) return;
     deleteBet.mutate({ id: betToDelete.id });
@@ -117,13 +173,37 @@ export default function DashboardPage() {
   };
 
   const handleAddBet = () => {
-    if (!eventPreview) return;
-    createBet.mutate({
-      eventTicker: eventPreview.event.event_ticker,
-      title: eventPreview.event.title,
-      subtitle: eventPreview.event.sub_title,
-      category: eventPreview.event.category,
+    if (inputMode === "search" && selectedEvent) {
+      createBet.mutate({
+        eventTicker: selectedEvent.eventTicker,
+        title: selectedEvent.title,
+        subtitle: selectedEvent.subTitle,
+        category: selectedEvent.category,
+      });
+    } else if (inputMode === "eventId" && eventPreview) {
+      createBet.mutate({
+        eventTicker: eventPreview.event.event_ticker,
+        title: eventPreview.event.title,
+        subtitle: eventPreview.event.sub_title,
+        category: eventPreview.event.category,
+      });
+    }
+  };
+
+  const handleSelectSearchEvent = (event: typeof filteredEvents[0]) => {
+    setSelectedEvent({
+      eventTicker: event.eventTicker,
+      title: event.title,
+      subTitle: event.subTitle,
+      category: event.category,
     });
+  };
+
+  const handleCloseModal = () => {
+    setShowAddForm(false);
+    setEventTicker("");
+    setSearchQuery("");
+    setSelectedEvent(null);
   };
 
   if (sessionPending) {
@@ -210,78 +290,215 @@ export default function DashboardPage() {
               >
               <h2 className="mb-4 text-xl font-semibold text-white">Add Your Kalshi Bet</h2>
 
-              <div className="mb-4">
-                <label className="mb-2 block text-sm text-gray-400">Event ID</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={eventTicker}
-                    onChange={(e) => setEventTicker(e.target.value.toUpperCase())}
-                    placeholder="e.g. KXTRUMPMENTIONB-25DEC05"
-                    className="flex-1 rounded-lg border border-gray-700 bg-gray-800 px-4 py-3 text-white placeholder-gray-500 focus:border-[#CDFF00] focus:outline-none"
-                  />
-                  <button
-                    onClick={handleLookup}
-                    disabled={!trimmedTicker || eventLoading}
-                    className="cursor-pointer rounded-lg bg-gray-700 px-4 py-3 text-white transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {eventLoading ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : (
-                      "Look up"
-                    )}
-                  </button>
-                </div>
+              {/* Mode Toggle */}
+              <div className="mb-4 flex gap-2 rounded-lg bg-gray-800 p-1">
+                <button
+                  onClick={() => {
+                    setInputMode("search");
+                    setSelectedEvent(null);
+                  }}
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition ${
+                    inputMode === "search"
+                      ? "bg-[#CDFF00] text-black"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  <Search className="h-4 w-4" />
+                  Search
+                </button>
+                <button
+                  onClick={() => {
+                    setInputMode("eventId");
+                    setSearchQuery("");
+                    setSelectedEvent(null);
+                  }}
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition ${
+                    inputMode === "eventId"
+                      ? "bg-[#CDFF00] text-black"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  <Hash className="h-4 w-4" />
+                  Event ID
+                </button>
               </div>
 
-              {eventError && (
-                <div className="mb-4 rounded-lg border border-red-800/50 bg-red-900/30 p-3">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-400" />
-                    <div className="flex-1">
-                      <p className="text-sm text-red-400">Event not found. Check the ID and try again.</p>
+              {/* Search Mode */}
+              {inputMode === "search" && (
+                <div className="mb-4">
+                  <div className="relative mb-3">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setSelectedEvent(null);
+                      }}
+                      placeholder="Search events..."
+                      className="w-full rounded-lg border border-gray-700 bg-gray-800 py-3 pl-10 pr-4 text-white placeholder-gray-500 focus:border-[#CDFF00] focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Search Results */}
+                  {eventsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-[#CDFF00]" />
+                    </div>
+                  ) : selectedEvent ? (
+                    <div className="rounded-lg border-2 border-[#CDFF00] bg-gray-800 p-4">
+                      <div className="mb-1 flex items-center gap-2">
+                        <span className="text-xs text-[#CDFF00]">{selectedEvent.category}</span>
+                        {selectedEvent.category === "Sports" && (
+                          <span className="rounded-full bg-amber-900/50 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+                            Coming Soon
+                          </span>
+                        )}
+                        <Check className="ml-auto h-4 w-4 text-[#CDFF00]" />
+                      </div>
+                      <div className="text-lg font-medium text-white">{selectedEvent.title}</div>
+                      {selectedEvent.subTitle && (
+                        <div className="text-sm text-gray-400">{selectedEvent.subTitle}</div>
+                      )}
                       <button
-                        onClick={handleLookup}
-                        disabled={eventLoading}
-                        className="mt-2 text-xs text-red-300 underline hover:text-red-200 disabled:opacity-50"
+                        onClick={() => setSelectedEvent(null)}
+                        className="mt-2 text-xs text-gray-400 underline hover:text-gray-300"
                       >
-                        Retry lookup
+                        Change selection
                       </button>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="max-h-64 space-y-2 overflow-y-auto">
+                      {filteredEvents.length === 0 ? (
+                        <div className="py-8 text-center text-sm text-gray-500">
+                          {searchQuery ? "No events found" : "Start typing to search"}
+                        </div>
+                      ) : (
+                        filteredEvents.map((event) => (
+                          <button
+                            key={event.eventTicker}
+                            onClick={() => handleSelectSearchEvent(event)}
+                            className="w-full rounded-lg border border-gray-700 bg-gray-800 p-3 text-left transition hover:border-[#CDFF00]/50 hover:bg-gray-750"
+                          >
+                            <div className="mb-1 flex items-center gap-2">
+                              <span className="text-xs text-[#CDFF00]">{event.category}</span>
+                              {event.category === "Sports" && (
+                                <span className="rounded-full bg-amber-900/50 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+                                  Coming Soon
+                                </span>
+                              )}
+                              <span className="ml-auto text-xs text-gray-500">
+                                {event.totalVolume.toLocaleString()} vol
+                              </span>
+                            </div>
+                            <div className="font-medium text-white">{event.title}</div>
+                            {event.subTitle && (
+                              <div className="text-sm text-gray-400">{event.subTitle}</div>
+                            )}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
-              {eventPreview && (
-                <div className="mb-4 rounded-lg border border-gray-700 bg-gray-800 p-4">
-                  <div className="mb-1 text-xs text-[#CDFF00]">{eventPreview.event.category}</div>
-                  <div className="mb-1 text-lg font-medium text-white">{eventPreview.event.title}</div>
-                  {eventPreview.event.sub_title && (
-                    <div className="text-sm text-gray-400">{eventPreview.event.sub_title}</div>
-                  )}
-                  <div className="mt-2 text-xs text-gray-500">
-                    {eventPreview.event.markets?.length ?? 0} markets
+              {/* Event ID Mode */}
+              {inputMode === "eventId" && (
+                <>
+                  <div className="mb-4">
+                    <label className="mb-2 block text-sm text-gray-400">Event ID</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={eventTicker}
+                        onChange={(e) => setEventTicker(e.target.value.toUpperCase())}
+                        placeholder="e.g. KXTRUMPMENTIONB-25DEC05"
+                        className="flex-1 rounded-lg border border-gray-700 bg-gray-800 px-4 py-3 text-white placeholder-gray-500 focus:border-[#CDFF00] focus:outline-none"
+                      />
+                      <button
+                        onClick={handleLookup}
+                        disabled={!trimmedTicker || eventLoading}
+                        className="cursor-pointer rounded-lg bg-gray-700 px-4 py-3 text-white transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {eventLoading ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          "Look up"
+                        )}
+                      </button>
+                    </div>
                   </div>
-                </div>
+
+                  {eventError && (
+                    <div className="mb-4 rounded-lg border border-red-800/50 bg-red-900/30 p-3">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-400" />
+                        <div className="flex-1">
+                          <p className="text-sm text-red-400">Event not found. Check the ID and try again.</p>
+                          <button
+                            onClick={handleLookup}
+                            disabled={eventLoading}
+                            className="mt-2 text-xs text-red-300 underline hover:text-red-200 disabled:opacity-50"
+                          >
+                            Retry lookup
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {eventPreview && (
+                    <div className="mb-4 space-y-3">
+                      <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
+                        <div className="mb-1 flex items-center gap-2">
+                          <span className="text-xs text-[#CDFF00]">{eventPreview.event.category}</span>
+                          {eventPreview.event.category === "Sports" && (
+                            <span className="rounded-full bg-amber-900/50 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+                              Coming Soon
+                            </span>
+                          )}
+                        </div>
+                        <div className="mb-1 text-lg font-medium text-white">{eventPreview.event.title}</div>
+                        {eventPreview.event.sub_title && (
+                          <div className="text-sm text-gray-400">{eventPreview.event.sub_title}</div>
+                        )}
+                        <div className="mt-2 text-xs text-gray-500">
+                          {eventPreview.event.markets?.length ?? 0} markets
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => {
-                    setShowAddForm(false);
-                    setEventTicker("");
-                  }}
+                  onClick={handleCloseModal}
                   className="cursor-pointer flex-1 rounded-lg border border-gray-700 py-3 text-gray-300 transition-colors hover:border-gray-600"
                 >
                   Cancel
                 </button>
-                <button
-                  onClick={handleAddBet}
-                  disabled={!eventPreview || createBet.isPending}
-                  className="cursor-pointer flex-1 rounded-lg bg-[#CDFF00] py-3 font-medium text-black transition-colors hover:bg-[#b8e600] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {createBet.isPending ? "Adding..." : "Add Bet"}
-                </button>
+                {(inputMode === "search" ? selectedEvent?.category : eventPreview?.event.category) === "Sports" ? (
+                  <button
+                    disabled
+                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-gray-700 py-3 font-medium text-gray-400 opacity-60 cursor-not-allowed"
+                  >
+                    <Lock className="h-4 w-4" />
+                    Not Available Yet
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleAddBet}
+                    disabled={
+                      (inputMode === "search" ? !selectedEvent : !eventPreview) ||
+                      createBet.isPending
+                    }
+                    className="cursor-pointer flex-1 rounded-lg bg-[#CDFF00] py-3 font-medium text-black transition-colors hover:bg-[#b8e600] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {createBet.isPending ? "Adding..." : "Add Bet"}
+                  </button>
+                )}
               </div>
               </motion.div>
             </motion.div>
@@ -343,6 +560,57 @@ export default function DashboardPage() {
                   <button
                     onClick={() => setMutationError(null)}
                     className="cursor-pointer text-gray-400 hover:text-gray-300"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Sports Notification Toast */}
+        <AnimatePresence>
+          {showSportsNotification && (
+            <motion.div
+              initial={{ opacity: 0, x: 100 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 100 }}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              className="fixed bottom-8 right-8 z-50 w-80"
+            >
+              <div className="rounded-xl border border-amber-800/50 bg-gray-900 p-4 shadow-2xl">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-amber-900/50">
+                    <Trophy className="h-5 w-5 text-amber-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-amber-200">Sports Coming Soon!</h3>
+                    <p className="mt-1 text-sm text-amber-200/70">
+                      Want to be notified when sports tracking is available?
+                    </p>
+                    <div className="mt-3 flex items-center gap-2">
+                      <button
+                        onClick={() => setSportsInterest.mutate({ interested: true })}
+                        disabled={setSportsInterest.isPending}
+                        className="flex items-center gap-1.5 rounded-lg bg-amber-700/50 px-3 py-1.5 text-sm font-medium text-amber-100 transition-colors hover:bg-amber-700/70 disabled:opacity-50"
+                      >
+                        <Bell className="h-3.5 w-3.5" />
+                        {setSportsInterest.isPending ? "Saving..." : "Notify me"}
+                      </button>
+                      <button
+                        onClick={() => setShowSportsNotification(false)}
+                        className="rounded-lg px-3 py-1.5 text-sm text-gray-400 transition-colors hover:text-gray-300"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowSportsNotification(false)}
+                    className="cursor-pointer text-gray-500 hover:text-gray-400"
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
